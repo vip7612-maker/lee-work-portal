@@ -4,9 +4,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import {
   ChevronLeft, ChevronRight, RotateCw, Lock,
-  Plus, X, GripVertical, ChevronDown, Archive, RotateCcw,
-  Pin, MessageSquare, PanelRight, ArrowUp,
-  CheckSquare, Square, Link2, ExternalLink, Send, Trash2
+  Plus, X, ChevronDown, Archive, RotateCcw,
+  MessageSquare, PanelRight, ArrowUp,
+  CheckSquare, Square, Link2, ExternalLink, Trash2
 } from "lucide-react";
 
 /* ── Types ── */
@@ -33,7 +33,6 @@ const seed: Tab[] = [
   { id:"5", label:"사학연금공단 대문페이지",                url:"tp.or.kr",          pinned:false, memo:"", color:"#2b2a65" },
 ];
 
-/* ── Helpers ── */
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 
 const api = {
@@ -45,14 +44,83 @@ const api = {
 
 /* ── Component ── */
 export default function Portal() {
+  /* ═══ ALL HOOKS FIRST (React Rules of Hooks compliance) ═══ */
   const { data: session, status } = useSession();
 
   const [tabs, setTabs]             = useState<Tab[]>(seed);
   const [activeId, setActiveId]     = useState("5");
   const [sbWidth, setSbWidth]       = useState(240);
   const [panelOpen, setPanelOpen]   = useState(true);
+  const [trash, setTrash]           = useState<Tab[]>([]);
+  const [trashOpen, setTrashOpen]   = useState(false);
+  const [editingId, setEditingId]   = useState<string | null>(null);
+  const [editVal, setEditVal]       = useState("");
+  const [ctxMenu, setCtxMenu]       = useState<{ id: string; x: number; y: number } | null>(null);
+  const [urlEditId, setUrlEditId]   = useState<string | null>(null);
+  const [urlEditVal, setUrlEditVal] = useState("");
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [pinDropHover, setPinDropHover] = useState(false);
+  const [dbLoaded, setDbLoaded]     = useState(false);
+  const [rpTab, setRpTab]           = useState<'checklist' | 'links' | 'memos'>('checklist');
+  const [checks, setChecks]         = useState<CheckItem[]>([]);
+  const [newCheck, setNewCheck]     = useState("");
+  const [links, setLinks]           = useState<LinkItem[]>([]);
+  const [newLinkLabel, setNewLinkLabel] = useState("");
+  const [newLinkUrl, setNewLinkUrl] = useState("");
+  const [memos, setMemos]           = useState<Comment[]>([]);
+  const [newMemo, setNewMemo]       = useState("");
 
-  /* ── Auth gate ── */
+  const editRef = useRef<HTMLInputElement>(null);
+  const urlRef  = useRef<HTMLInputElement>(null);
+  const resizing = useRef(false);
+  const dragId   = useRef<string | null>(null);
+  const memosEndRef = useRef<HTMLDivElement>(null);
+
+  const onPointerDown = useCallback(() => { resizing.current = true; }, []);
+
+  /* ── Effects ── */
+  useEffect(() => { const h = () => setCtxMenu(null); window.addEventListener("click", h); return () => window.removeEventListener("click", h); }, []);
+
+  useEffect(() => {
+    const move = (e: PointerEvent) => { if (!resizing.current) return; setSbWidth(Math.max(180, Math.min(380, e.clientX))); };
+    const up = () => { resizing.current = false; };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+    return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    api.fetchJSON('/api/projects').then((rows: any[]) => {
+      if (rows && rows.length > 0) {
+        const activeList: Tab[] = [];
+        const archivedList: Tab[] = [];
+        for (const r of rows) {
+          const t: Tab = { id: r.id, label: r.label, url: r.url || '', pinned: !!r.pinned, memo: '', color: r.color || '#000' };
+          if (r.archived) archivedList.push(t);
+          else activeList.push(t);
+        }
+        setTabs(activeList);
+        setTrash(archivedList);
+        if (activeList.length) setActiveId(activeList[0].id);
+      } else {
+        seed.forEach((t, i) => {
+          api.post('/api/projects', { id: t.id, label: t.label, url: t.url, pinned: t.pinned ? 1 : 0, color: t.color, sort_order: i, archived: 0 });
+        });
+      }
+      setDbLoaded(true);
+    }).catch(() => setDbLoaded(true));
+  }, [session]);
+
+  useEffect(() => {
+    if (!activeId || !session) return;
+    api.fetchJSON(`/api/checklists?pid=${activeId}`).then(setChecks).catch(() => {});
+    api.fetchJSON(`/api/links?pid=${activeId}`).then(setLinks).catch(() => {});
+    api.fetchJSON(`/api/comments?pid=${activeId}`).then(setMemos).catch(() => {});
+  }, [activeId, session]);
+
+  useEffect(() => { memosEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [memos]);
+
+  /* ═══ AUTH GATE — after ALL hooks ═══ */
   if (status === "loading") {
     return <div className="login-screen"><p style={{ color:"var(--ink-3)" }}>로딩 중...</p></div>;
   }
@@ -69,10 +137,7 @@ export default function Portal() {
     );
   }
 
-  /* ── Trash (archive) ── */
-  const [trash, setTrash]           = useState<Tab[]>([]);
-  const [trashOpen, setTrashOpen]   = useState(false);
-
+  /* ═══ FUNCTIONS (non-hook, safe after conditional) ═══ */
   const softDelete = (id: string) => {
     const t = tabs.find(x => x.id === id);
     if (t) {
@@ -84,82 +149,30 @@ export default function Portal() {
   };
   const restoreTab = (id: string) => {
     const t = trash.find(x => x.id === id);
-    if (t) {
-      setTrash(prev => prev.filter(x => x.id !== id));
-      setTabs(prev => [...prev, { ...t, pinned: false }]);
-      api.put('/api/projects', { id, archived: 0, pinned: 0 });
-    }
+    if (t) { setTrash(prev => prev.filter(x => x.id !== id)); setTabs(prev => [...prev, { ...t, pinned: false }]); api.put('/api/projects', { id, archived: 0, pinned: 0 }); }
   };
-  const permanentDelete = (id: string) => {
-    setTrash(prev => prev.filter(x => x.id !== id));
-    api.del('/api/projects', { id });
-  };
+  const permanentDelete = (id: string) => { setTrash(prev => prev.filter(x => x.id !== id)); api.del('/api/projects', { id }); };
 
-  /* ── Inline rename ── */
-  const [editingId, setEditingId]   = useState<string | null>(null);
-  const [editVal, setEditVal]       = useState("");
-  const editRef = useRef<HTMLInputElement>(null);
   const startRename = (t: Tab) => { setEditingId(t.id); setEditVal(t.label); setTimeout(() => editRef.current?.focus(), 0); };
-  const commitRename = () => {
-    if (editingId && editVal.trim()) {
-      setTabs(p => p.map(t => t.id === editingId ? { ...t, label: editVal.trim() } : t));
-      api.put('/api/projects', { id: editingId, label: editVal.trim() });
-    }
-    setEditingId(null);
-  };
+  const commitRename = () => { if (editingId && editVal.trim()) { setTabs(p => p.map(t => t.id === editingId ? { ...t, label: editVal.trim() } : t)); api.put('/api/projects', { id: editingId, label: editVal.trim() }); } setEditingId(null); };
 
-  /* ── Context menu ── */
-  const [ctxMenu, setCtxMenu] = useState<{ id: string; x: number; y: number } | null>(null);
-  const [urlEditId, setUrlEditId]   = useState<string | null>(null);
-  const [urlEditVal, setUrlEditVal] = useState("");
-  const urlRef = useRef<HTMLInputElement>(null);
   const openCtx = (e: React.MouseEvent, id: string) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ id, x: e.clientX, y: e.clientY }); };
   const startUrlEdit = (id: string) => { const t = tabs.find(x => x.id === id); setUrlEditId(id); setUrlEditVal(t?.url || ""); setCtxMenu(null); setTimeout(() => urlRef.current?.focus(), 0); };
-  const commitUrl = () => {
-    if (urlEditId) {
-      setTabs(p => p.map(t => t.id === urlEditId ? { ...t, url: urlEditVal.trim() } : t));
-      api.put('/api/projects', { id: urlEditId, url: urlEditVal.trim() });
-    }
-    setUrlEditId(null);
-  };
+  const commitUrl = () => { if (urlEditId) { setTabs(p => p.map(t => t.id === urlEditId ? { ...t, url: urlEditVal.trim() } : t)); api.put('/api/projects', { id: urlEditId, url: urlEditVal.trim() }); } setUrlEditId(null); };
 
-  useEffect(() => { const h = () => setCtxMenu(null); window.addEventListener("click", h); return () => window.removeEventListener("click", h); }, []);
-
-  /* ── Sidebar resize ── */
-  const resizing = useRef(false);
-  const onPointerDown = useCallback(() => { resizing.current = true; }, []);
-  useEffect(() => {
-    const move = (e: PointerEvent) => { if (!resizing.current) return; setSbWidth(Math.max(180, Math.min(380, e.clientX))); };
-    const up = () => { resizing.current = false; };
-    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
-    return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
-  }, []);
-
-  /* ── Drag & Drop ── */
-  const dragId = useRef<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [pinDropHover, setPinDropHover] = useState(false);
   const onDragStart = (e: React.DragEvent, id: string) => { dragId.current = id; e.dataTransfer.effectAllowed = "move"; (e.currentTarget as HTMLElement).style.opacity = "0.4"; };
   const onDragEnd = (e: React.DragEvent) => { (e.currentTarget as HTMLElement).style.opacity = "1"; dragId.current = null; setDragOverId(null); setPinDropHover(false); };
   const onTabDragOver = (e: React.DragEvent, tid: string) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dragOverId !== tid) setDragOverId(tid); };
-  const onTabDrop = (e: React.DragEvent, tid: string) => {
-    e.preventDefault(); const srcId = dragId.current; if (!srcId || srcId === tid) return;
-    setTabs(prev => { const a = [...prev]; const si = a.findIndex(t => t.id === srcId); const ti = a.findIndex(t => t.id === tid); if (si === -1 || ti === -1) return prev; const [m] = a.splice(si, 1); a.splice(ti, 0, m); return a; });
-    setDragOverId(null);
-  };
+  const onTabDrop = (e: React.DragEvent, tid: string) => { e.preventDefault(); const srcId = dragId.current; if (!srcId || srcId === tid) return; setTabs(prev => { const a = [...prev]; const si = a.findIndex(t => t.id === srcId); const ti = a.findIndex(t => t.id === tid); if (si === -1 || ti === -1) return prev; const [m] = a.splice(si, 1); a.splice(ti, 0, m); return a; }); setDragOverId(null); };
   const onPinBarDragOver = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setPinDropHover(true); };
   const onPinBarDragLeave = () => setPinDropHover(false);
   const onPinBarDrop = (e: React.DragEvent) => { e.preventDefault(); const srcId = dragId.current; if (!srcId) return; setTabs(prev => prev.map(t => t.id === srcId ? { ...t, pinned: true } : t)); api.put('/api/projects', { id: srcId, pinned: 1 }); setPinDropHover(false); };
   const onPinDragOver = (e: React.DragEvent, tid: string) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dragOverId !== tid) setDragOverId(tid); };
-  const onPinDrop = (e: React.DragEvent, tid: string) => {
-    e.preventDefault(); const srcId = dragId.current; if (!srcId || srcId === tid) return;
-    setTabs(prev => { const a = [...prev]; const si = a.findIndex(t => t.id === srcId); if (si === -1) return prev; a[si] = { ...a[si], pinned: true }; const u = [...a]; const s2 = u.findIndex(t => t.id === srcId); const t2 = u.findIndex(t => t.id === tid); const [m] = u.splice(s2, 1); u.splice(t2, 0, m); return u; });
-    setDragOverId(null); setPinDropHover(false);
-  };
+  const onPinDrop = (e: React.DragEvent, tid: string) => { e.preventDefault(); const srcId = dragId.current; if (!srcId || srcId === tid) return; setTabs(prev => { const a = [...prev]; const si = a.findIndex(t => t.id === srcId); if (si === -1) return prev; a[si] = { ...a[si], pinned: true }; const u = [...a]; const s2 = u.findIndex(t => t.id === srcId); const t2 = u.findIndex(t => t.id === tid); const [m] = u.splice(s2, 1); u.splice(t2, 0, m); return u; }); setDragOverId(null); setPinDropHover(false); };
   const onTabListDragOver = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; };
   const onTabListDrop = (e: React.DragEvent) => { e.preventDefault(); const srcId = dragId.current; if (!srcId) return; const src = tabs.find(t => t.id === srcId); if (src?.pinned) { setTabs(prev => prev.map(t => t.id === srcId ? { ...t, pinned: false } : t)); api.put('/api/projects', { id: srcId, pinned: 0 }); } };
 
-  /* ── Derived ── */
+  /* Derived */
   const active = tabs.find(t => t.id === activeId) ?? tabs[0];
   const pins   = tabs.filter(t => t.pinned);
   const items  = tabs.filter(t => !t.pinned);
@@ -177,107 +190,18 @@ export default function Portal() {
     setActiveId(id);
     api.post('/api/projects', { ...newTab, pinned: 0, sort_order: tabs.length, archived: 0 });
   };
-  const setMemo = (v: string) => setTabs(p => p.map(t => t.id===activeId ? {...t, memo:v} : t));
 
-  /* ── DB: Load projects on mount ── */
-  const [dbLoaded, setDbLoaded] = useState(false);
-  useEffect(() => {
-    api.fetchJSON('/api/projects').then((rows: any[]) => {
-      if (rows && rows.length > 0) {
-        const active: Tab[] = [];
-        const archived: Tab[] = [];
-        for (const r of rows) {
-          const t: Tab = { id: r.id, label: r.label, url: r.url || '', pinned: !!r.pinned, memo: '', color: r.color || '#000' };
-          if (r.archived) archived.push(t);
-          else active.push(t);
-        }
-        setTabs(active);
-        setTrash(archived);
-        if (active.length) setActiveId(active[0].id);
-      } else {
-        // First time: seed DB with defaults
-        seed.forEach((t, i) => {
-          api.post('/api/projects', { id: t.id, label: t.label, url: t.url, pinned: t.pinned ? 1 : 0, color: t.color, sort_order: i, archived: 0 });
-        });
-      }
-      setDbLoaded(true);
-    }).catch(() => setDbLoaded(true));
-  }, []);
+  const addCheck = () => { if (!newCheck.trim()) return; const item: CheckItem = { id: uid(), project_id: activeId, text: newCheck.trim(), checked: 0, sort_order: checks.length }; setChecks(p => [...p, item]); setNewCheck(""); api.post('/api/checklists', item); };
+  const toggleCheck = (id: string) => { setChecks(p => p.map(c => c.id === id ? { ...c, checked: c.checked ? 0 : 1 } : c)); const c = checks.find(x => x.id === id); api.put('/api/checklists', { id, checked: c?.checked ? 0 : 1 }); };
+  const removeCheck = (id: string) => { setChecks(p => p.filter(c => c.id !== id)); api.del('/api/checklists', { id }); };
 
-  /* ── Right panel: 3-tab state ── */
-  type RPTab = 'checklist' | 'links' | 'memos';
-  const [rpTab, setRpTab] = useState<RPTab>('checklist');
+  const addLink = () => { if (!newLinkLabel.trim() || !newLinkUrl.trim()) return; const item: LinkItem = { id: uid(), project_id: activeId, label: newLinkLabel.trim(), url: newLinkUrl.trim(), sort_order: links.length }; setLinks(p => [...p, item]); setNewLinkLabel(""); setNewLinkUrl(""); api.post('/api/links', item); };
+  const removeLink = (id: string) => { setLinks(p => p.filter(l => l.id !== id)); api.del('/api/links', { id }); };
 
-  /* Checklist */
-  const [checks, setChecks] = useState<CheckItem[]>([]);
-  const [newCheck, setNewCheck] = useState("");
-  /* Links */
-  const [links, setLinks] = useState<LinkItem[]>([]);
-  const [newLinkLabel, setNewLinkLabel] = useState("");
-  const [newLinkUrl, setNewLinkUrl] = useState("");
-  /* Memos */
-  const [memos, setMemos] = useState<Comment[]>([]);
-  const [newMemo, setNewMemo] = useState("");
-  const memosEndRef = useRef<HTMLDivElement>(null);
+  const addMemo = () => { if (!newMemo.trim()) return; const item: Comment = { id: uid(), project_id: activeId, text: newMemo.trim(), created_at: new Date().toISOString() }; setMemos(p => [...p, item]); setNewMemo(""); api.post('/api/comments', item); };
+  const removeMemo = (id: string) => { setMemos(p => p.filter(m => m.id !== id)); api.del('/api/comments', { id }); };
 
-  /* Fetch right panel data on active tab change */
-  useEffect(() => {
-    if (!activeId) return;
-    api.fetchJSON(`/api/checklists?pid=${activeId}`).then(setChecks).catch(() => {});
-    api.fetchJSON(`/api/links?pid=${activeId}`).then(setLinks).catch(() => {});
-    api.fetchJSON(`/api/comments?pid=${activeId}`).then(setMemos).catch(() => {});
-  }, [activeId]);
-
-  useEffect(() => { memosEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [memos]);
-
-  /* Checklist actions */
-  const addCheck = () => {
-    if (!newCheck.trim()) return;
-    const item: CheckItem = { id: uid(), project_id: activeId, text: newCheck.trim(), checked: 0, sort_order: checks.length };
-    setChecks(p => [...p, item]);
-    setNewCheck("");
-    api.post('/api/checklists', item);
-  };
-  const toggleCheck = (id: string) => {
-    setChecks(p => p.map(c => c.id === id ? { ...c, checked: c.checked ? 0 : 1 } : c));
-    const c = checks.find(x => x.id === id);
-    api.put('/api/checklists', { id, checked: c?.checked ? 0 : 1 });
-  };
-  const removeCheck = (id: string) => {
-    setChecks(p => p.filter(c => c.id !== id));
-    api.del('/api/checklists', { id });
-  };
-
-  /* Link actions */
-  const addLink = () => {
-    if (!newLinkLabel.trim() || !newLinkUrl.trim()) return;
-    const item: LinkItem = { id: uid(), project_id: activeId, label: newLinkLabel.trim(), url: newLinkUrl.trim(), sort_order: links.length };
-    setLinks(p => [...p, item]);
-    setNewLinkLabel(""); setNewLinkUrl("");
-    api.post('/api/links', item);
-  };
-  const removeLink = (id: string) => {
-    setLinks(p => p.filter(l => l.id !== id));
-    api.del('/api/links', { id });
-  };
-
-  /* Memo actions */
-  const addMemo = () => {
-    if (!newMemo.trim()) return;
-    const item: Comment = { id: uid(), project_id: activeId, text: newMemo.trim(), created_at: new Date().toISOString() };
-    setMemos(p => [...p, item]);
-    setNewMemo("");
-    api.post('/api/comments', item);
-  };
-  const removeMemo = (id: string) => {
-    setMemos(p => p.filter(m => m.id !== id));
-    api.del('/api/comments', { id });
-  };
-
-  /* ── Sync project changes to DB ── */
-  const syncProject = useCallback((t: Tab) => {
-    api.put('/api/projects', { id: t.id, label: t.label, url: t.url, pinned: t.pinned ? 1 : 0, color: t.color });
-  }, []);
+  if (!active) return <div className="login-screen"><p style={{ color:"var(--ink-3)" }}>프로젝트를 불러오는 중...</p></div>;
 
   return (
     <div className={`shell ${panelOpen ? "panel-open" : "panel-closed"}`} style={{ "--sb": `${sbWidth}px` } as React.CSSProperties}>
@@ -423,7 +347,6 @@ export default function Portal() {
 
       {/* ═══ RIGHT PANEL ═══ */}
       <div className="rp">
-        {/* Header */}
         <div className="rp__header">
           <div className="rp__tabs-nav">
             <button className={`rp__tab-btn ${rpTab==='checklist' ? 'is-active' : ''}`} onClick={() => setRpTab('checklist')}><CheckSquare size={13}/> 체크리스트</button>
@@ -435,9 +358,7 @@ export default function Portal() {
           </div>
         </div>
 
-        {/* Tab content */}
         <div className="rp__body">
-          {/* ── CHECKLIST ── */}
           {rpTab === 'checklist' && (
             <div className="rp-section">
               <div className="rp-section__title">{active.label} 체크리스트</div>
@@ -459,7 +380,6 @@ export default function Portal() {
             </div>
           )}
 
-          {/* ── LINKS ── */}
           {rpTab === 'links' && (
             <div className="rp-section">
               <div className="rp-section__title">{active.label} 바로가기</div>
@@ -483,7 +403,6 @@ export default function Portal() {
             </div>
           )}
 
-          {/* ── MEMOS ── */}
           {rpTab === 'memos' && (
             <div className="rp-section rp-section--memos">
               <div className="rp-section__title">{active.label} 메모</div>
@@ -504,7 +423,6 @@ export default function Portal() {
           )}
         </div>
 
-        {/* Memo input (always visible in memo tab) */}
         {rpTab === 'memos' && (
           <div className="rp__footer">
             <div className="rp__input">
