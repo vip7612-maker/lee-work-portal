@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import {
   ChevronLeft, ChevronRight, RotateCw, Lock,
-  Plus, X, GripVertical,
+  Plus, X, GripVertical, ChevronDown, Trash2, RotateCcw,
   Zap, Search, Pin, MessageSquare,
   PanelRight, ArrowUp
 } from "lucide-react";
@@ -41,6 +41,32 @@ export default function Portal() {
   const [activeId, setActiveId]     = useState("5");
   const [sbWidth, setSbWidth]       = useState(240);
   const [panelOpen, setPanelOpen]   = useState(true);
+
+  /* ── Trash (soft delete) ── */
+  const [trash, setTrash]           = useState<Tab[]>([]);
+  const [trashOpen, setTrashOpen]   = useState(false);
+
+  const softDelete = (id: string) => {
+    const t = tabs.find(x => x.id === id);
+    if (t) {
+      setTrash(prev => [t, ...prev]);
+      setTabs(prev => prev.filter(x => x.id !== id));
+      if (activeId === id) {
+        const remaining = tabs.filter(x => x.id !== id);
+        if (remaining.length) setActiveId(remaining[0].id);
+      }
+    }
+  };
+  const restoreTab = (id: string) => {
+    const t = trash.find(x => x.id === id);
+    if (t) {
+      setTrash(prev => prev.filter(x => x.id !== id));
+      setTabs(prev => [...prev, { ...t, pinned: false }]);
+    }
+  };
+  const permanentDelete = (id: string) => {
+    setTrash(prev => prev.filter(x => x.id !== id));
+  };
 
   /* ── Inline rename (double-click) ── */
   const [editingId, setEditingId]   = useState<string | null>(null);
@@ -232,7 +258,6 @@ export default function Portal() {
     setTabs(prev => [...prev, { id, label:"New Tab", url:"", pinned:false, memo:"", color: COLORS[prev.length % COLORS.length] }]);
     setActiveId(id);
   };
-  const removeTab = (id: string, e: React.MouseEvent) => { e.stopPropagation(); setTabs(p => p.filter(t => t.id !== id)); };
   const setMemo   = (v: string) => setTabs(p => p.map(t => t.id===activeId ? {...t, memo:v} : t));
 
   return (
@@ -304,14 +329,35 @@ export default function Portal() {
               ) : (
                 <span className="tab__label">{t.label}</span>
               )}
-              <span className="tab__actions">
-                <button className="tab__btn" title="Close" onClick={e => removeTab(t.id, e)}><X size={11}/></button>
-              </span>
+
             </div>
           ))}
         </div>
 
         <button className="sb__new" onClick={addTab}><Plus size={14}/> New Tab</button>
+
+        {/* ── Trash toggle ── */}
+        {trash.length > 0 && (
+          <div className="trash-section">
+            <button className="trash-toggle" onClick={() => setTrashOpen(v => !v)}>
+              <Trash2 size={13}/>
+              <span>삭제된 프로젝트 ({trash.length})</span>
+              <ChevronDown size={13} style={{ transform: trashOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s', marginLeft: 'auto' }}/>
+            </button>
+            {trashOpen && (
+              <div className="trash-list">
+                {trash.map(t => (
+                  <div key={t.id} className="trash-item">
+                    {getFavicon(t.url, 14) || <span className="tab__dot" style={{ background: t.color }} />}
+                    <span className="trash-item__label">{t.label}</span>
+                    <button className="tab__btn" title="복원" onClick={() => restoreTab(t.id)}><RotateCcw size={11}/></button>
+                    <button className="tab__btn ctx-danger" title="영구 삭제" onClick={() => permanentDelete(t.id)}><X size={11}/></button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* URL edit overlay */}
         {urlEditId && (
@@ -347,7 +393,7 @@ export default function Portal() {
             {tabs.find(t => t.id === ctxMenu.id)?.pinned ? "즐겨찾기 해제" : "즐겨찾기 등록"}
           </button>
           <div className="ctx-divider" />
-          <button className="ctx-danger" onClick={() => { setTabs(p => p.filter(t => t.id !== ctxMenu.id)); setCtxMenu(null); }}>삭제</button>
+          <button className="ctx-danger" onClick={() => { softDelete(ctxMenu.id); setCtxMenu(null); }}>삭제</button>
         </div>
       )}
 

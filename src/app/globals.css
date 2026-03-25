@@ -226,6 +226,33 @@ html, body { margin:0; padding:0; height:100vh; overflow:hidden;
 }
 .memo:focus { border-color: var(--tint); background: #fff; }
 
+/* ── Trash / deleted projects ── */
+.trash-section {
+  border-top: 1px solid var(--rule);
+  margin-top: 4px;
+}
+.trash-toggle {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; padding: 10px 16px;
+  background: none; border: none;
+  font-size: .78rem; font-weight: 600;
+  color: var(--ink-3); cursor: pointer;
+}
+.trash-toggle:hover { color: var(--ink-2); }
+
+.trash-list { padding: 0 8px 8px; }
+.trash-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px; border-radius: 5px;
+  font-size: .78rem; color: var(--ink-3);
+  animation: trashIn .15s ease;
+}
+.trash-item:hover { background: rgba(0,0,0,.03); }
+.trash-item__label {
+  flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+@keyframes trashIn { from { opacity:0; transform: translateY(-4px); } to { opacity:1; transform: translateY(0); } }
+
 /* scrollbar */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
