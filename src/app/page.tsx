@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import Image from "next/image";
 import {
   ChevronLeft, ChevronRight, RotateCw, Lock,
   Plus, X, GripVertical,
@@ -210,6 +211,22 @@ export default function Portal() {
   const pins     = tabs.filter(t => t.pinned);
   const items    = tabs.filter(t => !t.pinned);
 
+  /* Favicon helper */
+  const getFavicon = (url: string, size: number) => {
+    if (!url) return null;
+    const domain = url.split("/")[0];
+    return (
+      <img
+        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=${size * 2}`}
+        alt=""
+        width={size}
+        height={size}
+        style={{ borderRadius: size > 16 ? 4 : 2 }}
+        draggable={false}
+      />
+    );
+  };
+
   const addTab = () => {
     const id = Date.now().toString();
     setTabs(prev => [...prev, { id, label:"New Tab", url:"", pinned:false, memo:"", color: COLORS[prev.length % COLORS.length] }]);
@@ -246,7 +263,7 @@ export default function Portal() {
               onDragOver={e => onPinDragOver(e, t.id)}
               onDrop={e => onPinDrop(e, t.id)}
             >
-              <div style={{ width:16, height:16, borderRadius:3, background: t.color }} />
+              {getFavicon(t.url, 20) || <div style={{ width:16, height:16, borderRadius:3, background: t.color }} />}
             </div>
           ))}
           {pins.length === 0 && (
@@ -273,8 +290,7 @@ export default function Portal() {
               onDragOver={e => onTabDragOver(e, t.id)}
               onDrop={e => onTabDrop(e, t.id)}
             >
-              <span className="tab__grip"><GripVertical size={12}/></span>
-              <span className="tab__dot" style={{ background: t.color }} />
+              {getFavicon(t.url, 16) || <span className="tab__dot" style={{ background: t.color }} />}
               {editingId === t.id ? (
                 <input
                   ref={editRef}
