@@ -255,7 +255,7 @@ export default function Portal() {
 
   const addTab = () => {
     const id = Date.now().toString();
-    setTabs(prev => [...prev, { id, label:"New Tab", url:"", pinned:false, memo:"", color: COLORS[prev.length % COLORS.length] }]);
+    setTabs(prev => [...prev, { id, label:"NEW 프로젝트", url:"", pinned:false, memo:"", color: COLORS[prev.length % COLORS.length] }]);
     setActiveId(id);
   };
   const setMemo   = (v: string) => setTabs(p => p.map(t => t.id===activeId ? {...t, memo:v} : t));
@@ -334,8 +334,6 @@ export default function Portal() {
           ))}
         </div>
 
-        <button className="sb__new" onClick={addTab}><Plus size={14}/> New Tab</button>
-
         {/* ── Trash toggle ── */}
         {trash.length > 0 && (
           <div className="trash-section">
@@ -358,6 +356,8 @@ export default function Portal() {
             )}
           </div>
         )}
+
+        <button className="sb__new" onClick={addTab}><Plus size={14}/> NEW 프로젝트</button>
 
         {/* URL edit overlay */}
         {urlEditId && (
