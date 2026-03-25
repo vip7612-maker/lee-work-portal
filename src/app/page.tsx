@@ -1,23 +1,22 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import Image from "next/image";
+import { useSession, signIn, signOut } from "next-auth/react";
 import {
   ChevronLeft, ChevronRight, RotateCw, Lock,
   Plus, X, GripVertical, ChevronDown, Archive, RotateCcw,
-  Zap, Search, Pin, MessageSquare,
-  PanelRight, ArrowUp
+  Pin, MessageSquare, PanelRight, ArrowUp,
+  CheckSquare, Square, Link2, ExternalLink, Send, Trash2
 } from "lucide-react";
 
 /* ── Types ── */
 type Tab = {
-  id: string;
-  label: string;
-  url: string;
-  pinned: boolean;
-  memo: string;
-  color: string;
+  id: string; label: string; url: string;
+  pinned: boolean; memo: string; color: string;
 };
+type CheckItem = { id: string; project_id: string; text: string; checked: number; sort_order: number };
+type LinkItem  = { id: string; project_id: string; label: string; url: string; sort_order: number };
+type Comment   = { id: string; project_id: string; text: string; created_at: string };
 
 const COLORS = ["#ea4335","#34a853","#fbbc04","#4285f4","#ff6d01","#673ab7","#00bcd4","#8bc34a"];
 
@@ -27,22 +26,50 @@ const seed: Tab[] = [
   { id:"p3", label:"Calendar",   url:"calendar.google.com",pinned:true, memo:"", color:"#fbbc04" },
   { id:"p4", label:"Portal",     url:"lee-work-portal.vercel.app", pinned:true, memo:"", color:"#4285f4" },
   { id:"p5", label:"Notion",     url:"notion.so",          pinned:true, memo:"", color:"#000" },
-
-  { id:"1", label:"해밀학교 대상 연구 참여자 정보 (2026", url:"docs.google.com",  pinned:false, memo:"해밀학교 연구 대상자 스프레드시트", color:"#4285f4" },
-  { id:"2", label:"vip7612-maker/lee-work-portal",        url:"github.com",       pinned:false, memo:"업무포털 리포지토리",           color:"#24292e" },
-  { id:"3", label:"Create Next App",                      url:"localhost:3000",    pinned:false, memo:"로컬 개발 환경",                color:"#000" },
-  { id:"4", label:"lee-work-portal.vercel.app",            url:"lee-work-portal.vercel.app", pinned:false, memo:"프로덕션 배포 사이트", color:"#000" },
-  { id:"5", label:"사학연금공단 대문페이지",                url:"tp.or.kr",          pinned:false, memo:"사학연금공단 벤치마킹 탭",       color:"#2b2a65" },
+  { id:"1", label:"해밀학교 대상 연구 참여자 정보 (2026", url:"docs.google.com",  pinned:false, memo:"", color:"#4285f4" },
+  { id:"2", label:"vip7612-maker/lee-work-portal",        url:"github.com",       pinned:false, memo:"", color:"#24292e" },
+  { id:"3", label:"Create Next App",                      url:"localhost:3000",    pinned:false, memo:"", color:"#000" },
+  { id:"4", label:"lee-work-portal.vercel.app",            url:"lee-work-portal.vercel.app", pinned:false, memo:"", color:"#000" },
+  { id:"5", label:"사학연금공단 대문페이지",                url:"tp.or.kr",          pinned:false, memo:"", color:"#2b2a65" },
 ];
+
+/* ── Helpers ── */
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+
+const api = {
+  async fetchJSON(url: string) { const r = await fetch(url); return r.json(); },
+  async post(url: string, body: object) { await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }); },
+  async put(url: string, body: object)  { await fetch(url, { method:'PUT',  headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }); },
+  async del(url: string, body: object)  { await fetch(url, { method:'DELETE', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }); },
+};
 
 /* ── Component ── */
 export default function Portal() {
+  const { data: session, status } = useSession();
+
   const [tabs, setTabs]             = useState<Tab[]>(seed);
   const [activeId, setActiveId]     = useState("5");
   const [sbWidth, setSbWidth]       = useState(240);
   const [panelOpen, setPanelOpen]   = useState(true);
 
-  /* ── Trash (soft delete) ── */
+  /* ── Auth gate ── */
+  if (status === "loading") {
+    return <div className="login-screen"><p style={{ color:"var(--ink-3)" }}>로딩 중...</p></div>;
+  }
+  if (!session) {
+    return (
+      <div className="login-screen">
+        <h1>이경진 업무포털</h1>
+        <p style={{ color:"var(--ink-3)", fontSize:".88rem" }}>업무 관리를 시작하려면 로그인하세요</p>
+        <button className="login-btn" onClick={() => signIn("google")}>
+          <img src="https://www.google.com/s2/favicons?domain=google.com&sz=32" alt="" width={20} height={20} />
+          Google로 로그인
+        </button>
+      </div>
+    );
+  }
+
+  /* ── Trash (archive) ── */
   const [trash, setTrash]           = useState<Tab[]>([]);
   const [trashOpen, setTrashOpen]   = useState(false);
 
@@ -51,10 +78,8 @@ export default function Portal() {
     if (t) {
       setTrash(prev => [t, ...prev]);
       setTabs(prev => prev.filter(x => x.id !== id));
-      if (activeId === id) {
-        const remaining = tabs.filter(x => x.id !== id);
-        if (remaining.length) setActiveId(remaining[0].id);
-      }
+      api.put('/api/projects', { id, archived: 1 });
+      if (activeId === id) { const r = tabs.filter(x => x.id !== id); if (r.length) setActiveId(r[0].id); }
     }
   };
   const restoreTab = (id: string) => {
@@ -62,203 +87,197 @@ export default function Portal() {
     if (t) {
       setTrash(prev => prev.filter(x => x.id !== id));
       setTabs(prev => [...prev, { ...t, pinned: false }]);
+      api.put('/api/projects', { id, archived: 0, pinned: 0 });
     }
   };
   const permanentDelete = (id: string) => {
     setTrash(prev => prev.filter(x => x.id !== id));
+    api.del('/api/projects', { id });
   };
 
-  /* ── Inline rename (double-click) ── */
+  /* ── Inline rename ── */
   const [editingId, setEditingId]   = useState<string | null>(null);
   const [editVal, setEditVal]       = useState("");
   const editRef = useRef<HTMLInputElement>(null);
-
-  const startRename = (t: Tab) => {
-    setEditingId(t.id);
-    setEditVal(t.label);
-    setTimeout(() => editRef.current?.focus(), 0);
-  };
+  const startRename = (t: Tab) => { setEditingId(t.id); setEditVal(t.label); setTimeout(() => editRef.current?.focus(), 0); };
   const commitRename = () => {
     if (editingId && editVal.trim()) {
       setTabs(p => p.map(t => t.id === editingId ? { ...t, label: editVal.trim() } : t));
+      api.put('/api/projects', { id: editingId, label: editVal.trim() });
     }
     setEditingId(null);
   };
 
-  /* ── Right-click context menu ── */
+  /* ── Context menu ── */
   const [ctxMenu, setCtxMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [urlEditId, setUrlEditId]   = useState<string | null>(null);
   const [urlEditVal, setUrlEditVal] = useState("");
   const urlRef = useRef<HTMLInputElement>(null);
-
-  const openCtx = (e: React.MouseEvent, id: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setCtxMenu({ id, x: e.clientX, y: e.clientY });
-  };
-  const startUrlEdit = (id: string) => {
-    const t = tabs.find(x => x.id === id);
-    setUrlEditId(id);
-    setUrlEditVal(t?.url || "");
-    setCtxMenu(null);
-    setTimeout(() => urlRef.current?.focus(), 0);
-  };
+  const openCtx = (e: React.MouseEvent, id: string) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ id, x: e.clientX, y: e.clientY }); };
+  const startUrlEdit = (id: string) => { const t = tabs.find(x => x.id === id); setUrlEditId(id); setUrlEditVal(t?.url || ""); setCtxMenu(null); setTimeout(() => urlRef.current?.focus(), 0); };
   const commitUrl = () => {
     if (urlEditId) {
       setTabs(p => p.map(t => t.id === urlEditId ? { ...t, url: urlEditVal.trim() } : t));
+      api.put('/api/projects', { id: urlEditId, url: urlEditVal.trim() });
     }
     setUrlEditId(null);
   };
 
-  /* Close menus on outside click */
-  useEffect(() => {
-    const handler = () => { setCtxMenu(null); };
-    window.addEventListener("click", handler);
-    return () => window.removeEventListener("click", handler);
-  }, []);
+  useEffect(() => { const h = () => setCtxMenu(null); window.addEventListener("click", h); return () => window.removeEventListener("click", h); }, []);
 
-  /* sidebar resize */
+  /* ── Sidebar resize ── */
   const resizing = useRef(false);
   const onPointerDown = useCallback(() => { resizing.current = true; }, []);
   useEffect(() => {
     const move = (e: PointerEvent) => { if (!resizing.current) return; setSbWidth(Math.max(180, Math.min(380, e.clientX))); };
     const up = () => { resizing.current = false; };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
     return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
   }, []);
 
-  /* ── Drag & Drop state ── */
+  /* ── Drag & Drop ── */
   const dragId = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [pinDropHover, setPinDropHover] = useState(false);
-
-  const onDragStart = (e: React.DragEvent, id: string) => {
-    dragId.current = id;
-    e.dataTransfer.effectAllowed = "move";
-    // Make the drag image semi-transparent
-    const el = e.currentTarget as HTMLElement;
-    el.style.opacity = "0.4";
-  };
-
-  const onDragEnd = (e: React.DragEvent) => {
-    (e.currentTarget as HTMLElement).style.opacity = "1";
-    dragId.current = null;
-    setDragOverId(null);
-    setPinDropHover(false);
-  };
-
-  /* Reorder within tab list */
-  const onTabDragOver = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    if (dragOverId !== targetId) setDragOverId(targetId);
-  };
-
-  const onTabDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    const srcId = dragId.current;
-    if (!srcId || srcId === targetId) return;
-
-    setTabs(prev => {
-      const arr = [...prev];
-      const srcIdx = arr.findIndex(t => t.id === srcId);
-      const tgtIdx = arr.findIndex(t => t.id === targetId);
-      if (srcIdx === -1 || tgtIdx === -1) return prev;
-      const [moved] = arr.splice(srcIdx, 1);
-      arr.splice(tgtIdx, 0, moved);
-      return arr;
-    });
+  const onDragStart = (e: React.DragEvent, id: string) => { dragId.current = id; e.dataTransfer.effectAllowed = "move"; (e.currentTarget as HTMLElement).style.opacity = "0.4"; };
+  const onDragEnd = (e: React.DragEvent) => { (e.currentTarget as HTMLElement).style.opacity = "1"; dragId.current = null; setDragOverId(null); setPinDropHover(false); };
+  const onTabDragOver = (e: React.DragEvent, tid: string) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dragOverId !== tid) setDragOverId(tid); };
+  const onTabDrop = (e: React.DragEvent, tid: string) => {
+    e.preventDefault(); const srcId = dragId.current; if (!srcId || srcId === tid) return;
+    setTabs(prev => { const a = [...prev]; const si = a.findIndex(t => t.id === srcId); const ti = a.findIndex(t => t.id === tid); if (si === -1 || ti === -1) return prev; const [m] = a.splice(si, 1); a.splice(ti, 0, m); return a; });
     setDragOverId(null);
   };
-
-  /* Drop onto pin bar → make it pinned */
-  const onPinBarDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setPinDropHover(true);
+  const onPinBarDragOver = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setPinDropHover(true); };
+  const onPinBarDragLeave = () => setPinDropHover(false);
+  const onPinBarDrop = (e: React.DragEvent) => { e.preventDefault(); const srcId = dragId.current; if (!srcId) return; setTabs(prev => prev.map(t => t.id === srcId ? { ...t, pinned: true } : t)); api.put('/api/projects', { id: srcId, pinned: 1 }); setPinDropHover(false); };
+  const onPinDragOver = (e: React.DragEvent, tid: string) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (dragOverId !== tid) setDragOverId(tid); };
+  const onPinDrop = (e: React.DragEvent, tid: string) => {
+    e.preventDefault(); const srcId = dragId.current; if (!srcId || srcId === tid) return;
+    setTabs(prev => { const a = [...prev]; const si = a.findIndex(t => t.id === srcId); if (si === -1) return prev; a[si] = { ...a[si], pinned: true }; const u = [...a]; const s2 = u.findIndex(t => t.id === srcId); const t2 = u.findIndex(t => t.id === tid); const [m] = u.splice(s2, 1); u.splice(t2, 0, m); return u; });
+    setDragOverId(null); setPinDropHover(false);
   };
+  const onTabListDragOver = (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; };
+  const onTabListDrop = (e: React.DragEvent) => { e.preventDefault(); const srcId = dragId.current; if (!srcId) return; const src = tabs.find(t => t.id === srcId); if (src?.pinned) { setTabs(prev => prev.map(t => t.id === srcId ? { ...t, pinned: false } : t)); api.put('/api/projects', { id: srcId, pinned: 0 }); } };
 
-  const onPinBarDragLeave = () => { setPinDropHover(false); };
+  /* ── Derived ── */
+  const active = tabs.find(t => t.id === activeId) ?? tabs[0];
+  const pins   = tabs.filter(t => t.pinned);
+  const items  = tabs.filter(t => !t.pinned);
 
-  const onPinBarDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const srcId = dragId.current;
-    if (!srcId) return;
-    setTabs(prev => prev.map(t => t.id === srcId ? { ...t, pinned: true } : t));
-    setPinDropHover(false);
-  };
-
-  /* Reorder within pin bar */
-  const onPinDragOver = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    if (dragOverId !== targetId) setDragOverId(targetId);
-  };
-
-  const onPinDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    const srcId = dragId.current;
-    if (!srcId || srcId === targetId) return;
-
-    setTabs(prev => {
-      const arr = [...prev];
-      const srcIdx = arr.findIndex(t => t.id === srcId);
-      if (srcIdx === -1) return prev;
-      // If dragging from tab list to pin bar, pin it
-      arr[srcIdx] = { ...arr[srcIdx], pinned: true };
-      const updated = [...arr];
-      const src2 = updated.findIndex(t => t.id === srcId);
-      const tgt2 = updated.findIndex(t => t.id === targetId);
-      const [moved] = updated.splice(src2, 1);
-      updated.splice(tgt2, 0, moved);
-      return updated;
-    });
-    setDragOverId(null);
-    setPinDropHover(false);
-  };
-
-  /* Drop on tab list area → unpin if pinned */
-  const onTabListDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-  const onTabListDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const srcId = dragId.current;
-    if (!srcId) return;
-    const src = tabs.find(t => t.id === srcId);
-    if (src?.pinned) {
-      setTabs(prev => prev.map(t => t.id === srcId ? { ...t, pinned: false } : t));
-    }
-  };
-
-  const active   = tabs.find(t => t.id === activeId) ?? tabs[0];
-  const pins     = tabs.filter(t => t.pinned);
-  const items    = tabs.filter(t => !t.pinned);
-
-  /* Favicon helper */
   const getFavicon = (url: string, size: number) => {
     if (!url) return null;
     const domain = url.split("/")[0];
-    return (
-      <img
-        src={`https://www.google.com/s2/favicons?domain=${domain}&sz=${size * 2}`}
-        alt=""
-        width={size}
-        height={size}
-        style={{ borderRadius: size > 16 ? 4 : 2 }}
-        draggable={false}
-      />
-    );
+    return <img src={`https://www.google.com/s2/favicons?domain=${domain}&sz=${size * 2}`} alt="" width={size} height={size} style={{ borderRadius: size > 16 ? 4 : 2 }} draggable={false} />;
   };
 
   const addTab = () => {
-    const id = Date.now().toString();
-    setTabs(prev => [...prev, { id, label:"NEW 프로젝트", url:"", pinned:false, memo:"", color: COLORS[prev.length % COLORS.length] }]);
+    const id = uid();
+    const newTab: Tab = { id, label:"NEW 프로젝트", url:"", pinned:false, memo:"", color: COLORS[tabs.length % COLORS.length] };
+    setTabs(prev => [...prev, newTab]);
     setActiveId(id);
+    api.post('/api/projects', { ...newTab, pinned: 0, sort_order: tabs.length, archived: 0 });
   };
-  const setMemo   = (v: string) => setTabs(p => p.map(t => t.id===activeId ? {...t, memo:v} : t));
+  const setMemo = (v: string) => setTabs(p => p.map(t => t.id===activeId ? {...t, memo:v} : t));
+
+  /* ── DB: Load projects on mount ── */
+  const [dbLoaded, setDbLoaded] = useState(false);
+  useEffect(() => {
+    api.fetchJSON('/api/projects').then((rows: any[]) => {
+      if (rows && rows.length > 0) {
+        const active: Tab[] = [];
+        const archived: Tab[] = [];
+        for (const r of rows) {
+          const t: Tab = { id: r.id, label: r.label, url: r.url || '', pinned: !!r.pinned, memo: '', color: r.color || '#000' };
+          if (r.archived) archived.push(t);
+          else active.push(t);
+        }
+        setTabs(active);
+        setTrash(archived);
+        if (active.length) setActiveId(active[0].id);
+      } else {
+        // First time: seed DB with defaults
+        seed.forEach((t, i) => {
+          api.post('/api/projects', { id: t.id, label: t.label, url: t.url, pinned: t.pinned ? 1 : 0, color: t.color, sort_order: i, archived: 0 });
+        });
+      }
+      setDbLoaded(true);
+    }).catch(() => setDbLoaded(true));
+  }, []);
+
+  /* ── Right panel: 3-tab state ── */
+  type RPTab = 'checklist' | 'links' | 'memos';
+  const [rpTab, setRpTab] = useState<RPTab>('checklist');
+
+  /* Checklist */
+  const [checks, setChecks] = useState<CheckItem[]>([]);
+  const [newCheck, setNewCheck] = useState("");
+  /* Links */
+  const [links, setLinks] = useState<LinkItem[]>([]);
+  const [newLinkLabel, setNewLinkLabel] = useState("");
+  const [newLinkUrl, setNewLinkUrl] = useState("");
+  /* Memos */
+  const [memos, setMemos] = useState<Comment[]>([]);
+  const [newMemo, setNewMemo] = useState("");
+  const memosEndRef = useRef<HTMLDivElement>(null);
+
+  /* Fetch right panel data on active tab change */
+  useEffect(() => {
+    if (!activeId) return;
+    api.fetchJSON(`/api/checklists?pid=${activeId}`).then(setChecks).catch(() => {});
+    api.fetchJSON(`/api/links?pid=${activeId}`).then(setLinks).catch(() => {});
+    api.fetchJSON(`/api/comments?pid=${activeId}`).then(setMemos).catch(() => {});
+  }, [activeId]);
+
+  useEffect(() => { memosEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [memos]);
+
+  /* Checklist actions */
+  const addCheck = () => {
+    if (!newCheck.trim()) return;
+    const item: CheckItem = { id: uid(), project_id: activeId, text: newCheck.trim(), checked: 0, sort_order: checks.length };
+    setChecks(p => [...p, item]);
+    setNewCheck("");
+    api.post('/api/checklists', item);
+  };
+  const toggleCheck = (id: string) => {
+    setChecks(p => p.map(c => c.id === id ? { ...c, checked: c.checked ? 0 : 1 } : c));
+    const c = checks.find(x => x.id === id);
+    api.put('/api/checklists', { id, checked: c?.checked ? 0 : 1 });
+  };
+  const removeCheck = (id: string) => {
+    setChecks(p => p.filter(c => c.id !== id));
+    api.del('/api/checklists', { id });
+  };
+
+  /* Link actions */
+  const addLink = () => {
+    if (!newLinkLabel.trim() || !newLinkUrl.trim()) return;
+    const item: LinkItem = { id: uid(), project_id: activeId, label: newLinkLabel.trim(), url: newLinkUrl.trim(), sort_order: links.length };
+    setLinks(p => [...p, item]);
+    setNewLinkLabel(""); setNewLinkUrl("");
+    api.post('/api/links', item);
+  };
+  const removeLink = (id: string) => {
+    setLinks(p => p.filter(l => l.id !== id));
+    api.del('/api/links', { id });
+  };
+
+  /* Memo actions */
+  const addMemo = () => {
+    if (!newMemo.trim()) return;
+    const item: Comment = { id: uid(), project_id: activeId, text: newMemo.trim(), created_at: new Date().toISOString() };
+    setMemos(p => [...p, item]);
+    setNewMemo("");
+    api.post('/api/comments', item);
+  };
+  const removeMemo = (id: string) => {
+    setMemos(p => p.filter(m => m.id !== id));
+    api.del('/api/comments', { id });
+  };
+
+  /* ── Sync project changes to DB ── */
+  const syncProject = useCallback((t: Tab) => {
+    api.put('/api/projects', { id: t.id, label: t.label, url: t.url, pinned: t.pinned ? 1 : 0, color: t.color });
+  }, []);
 
   return (
     <div className={`shell ${panelOpen ? "panel-open" : "panel-closed"}`} style={{ "--sb": `${sbWidth}px` } as React.CSSProperties}>
@@ -266,90 +285,60 @@ export default function Portal() {
       {/* ═══ SIDEBAR ═══ */}
       <div className="sb">
         <div className="sb__resize" onPointerDown={onPointerDown} />
+        <div className="sb__title">
+          <span>이경진 업무포털</span>
+          <button className="sb__signout" onClick={() => signOut()}>로그아웃</button>
+        </div>
 
-        <div className="sb__title">이경진 업무포털</div>
-
-        {/* Pinned icons — drop zone */}
-        <div
-          className={`pin-bar ${pinDropHover ? "pin-bar--hover" : ""}`}
-          onDragOver={onPinBarDragOver}
-          onDragLeave={onPinBarDragLeave}
-          onDrop={onPinBarDrop}
-        >
+        {/* Pinned icons */}
+        <div className={`pin-bar ${pinDropHover ? "pin-bar--hover" : ""}`} onDragOver={onPinBarDragOver} onDragLeave={onPinBarDragLeave} onDrop={onPinBarDrop}>
           {pins.map(t => (
-            <div
-              key={t.id}
-              className={`pin ${activeId===t.id ? "is-active" : ""} ${dragOverId===t.id ? "pin--drag-over" : ""}`}
-              onClick={() => setActiveId(t.id)}
-              title={t.label}
-              draggable
-              onDragStart={e => onDragStart(e, t.id)}
-              onDragEnd={onDragEnd}
-              onDragOver={e => onPinDragOver(e, t.id)}
-              onDrop={e => onPinDrop(e, t.id)}
+            <div key={t.id} className={`pin ${activeId===t.id ? "is-active" : ""} ${dragOverId===t.id ? "pin--drag-over" : ""}`}
+              onClick={() => setActiveId(t.id)} title={t.label} draggable
+              onDragStart={e => onDragStart(e, t.id)} onDragEnd={onDragEnd}
+              onDragOver={e => onPinDragOver(e, t.id)} onDrop={e => onPinDrop(e, t.id)}
+              onContextMenu={e => openCtx(e, t.id)}
             >
               {getFavicon(t.url, 20) || <div style={{ width:16, height:16, borderRadius:3, background: t.color }} />}
             </div>
           ))}
-          {pins.length === 0 && (
-            <div style={{ fontSize:".75rem", color:"var(--ink-3)", padding:"8px 0" }}>여기로 드래그하여 즐겨찾기 추가</div>
-          )}
+          {pins.length === 0 && <div style={{ fontSize:".75rem", color:"var(--ink-3)", padding:"8px 0" }}>여기로 드래그하여 즐겨찾기 추가</div>}
         </div>
 
-        {/* Tab list — drop zone */}
-        <div
-          className="tab-list"
-          onDragOver={onTabListDragOver}
-          onDrop={onTabListDrop}
-        >
+        {/* Tab list */}
+        <div className="tab-list" onDragOver={onTabListDragOver} onDrop={onTabListDrop}>
           {items.map(t => (
-            <div
-              key={t.id}
-              className={`tab ${activeId===t.id ? "is-active" : ""} ${dragOverId===t.id ? "tab--drag-over" : ""}`}
-              onClick={() => setActiveId(t.id)}
-              onDoubleClick={() => startRename(t)}
-              onContextMenu={e => openCtx(e, t.id)}
-              draggable={editingId !== t.id}
-              onDragStart={e => onDragStart(e, t.id)}
-              onDragEnd={onDragEnd}
-              onDragOver={e => onTabDragOver(e, t.id)}
-              onDrop={e => onTabDrop(e, t.id)}
+            <div key={t.id} className={`tab ${activeId===t.id ? "is-active" : ""} ${dragOverId===t.id ? "tab--drag-over" : ""}`}
+              onClick={() => setActiveId(t.id)} onDoubleClick={() => startRename(t)}
+              onContextMenu={e => openCtx(e, t.id)} draggable={editingId !== t.id}
+              onDragStart={e => onDragStart(e, t.id)} onDragEnd={onDragEnd}
+              onDragOver={e => onTabDragOver(e, t.id)} onDrop={e => onTabDrop(e, t.id)}
             >
               {getFavicon(t.url, 16) || <span className="tab__dot" style={{ background: t.color }} />}
               {editingId === t.id ? (
-                <input
-                  ref={editRef}
-                  className="tab__edit"
-                  value={editVal}
-                  onChange={e => setEditVal(e.target.value)}
-                  onBlur={commitRename}
+                <input ref={editRef} className="tab__edit" value={editVal}
+                  onChange={e => setEditVal(e.target.value)} onBlur={commitRename}
                   onKeyDown={e => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") setEditingId(null); }}
-                  onClick={e => e.stopPropagation()}
-                />
+                  onClick={e => e.stopPropagation()} />
               ) : (
                 <span className="tab__label">{t.label}</span>
               )}
-
             </div>
           ))}
         </div>
 
-        {/* ── Archived toggle ── */}
+        {/* Archived */}
         {trash.length > 0 && (
           <div className="trash-section">
             <button className="trash-toggle" onClick={() => setTrashOpen(v => !v)}>
-              <Archive size={13}/>
-              <span>보관된 프로젝트 ({trash.length})</span>
+              <Archive size={13}/><span>보관된 프로젝트 ({trash.length})</span>
               <ChevronDown size={13} style={{ transform: trashOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s', marginLeft: 'auto' }}/>
             </button>
             {trashOpen && (
               <div className="trash-list">
                 {trash.map(t => (
-                  <div
-                    key={t.id}
-                    className="trash-item"
-                    onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ id: t.id, x: e.clientX, y: e.clientY }); }}
-                  >
+                  <div key={t.id} className="trash-item"
+                    onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ id: t.id, x: e.clientX, y: e.clientY }); }}>
                     {getFavicon(t.url, 14) || <span className="tab__dot" style={{ background: t.color }} />}
                     <span className="trash-item__label">{t.label}</span>
                     <button className="tab__btn" title="복원" onClick={() => restoreTab(t.id)}><RotateCcw size={11}/></button>
@@ -367,13 +356,8 @@ export default function Portal() {
           <div className="url-edit-overlay" onClick={e => e.stopPropagation()}>
             <div className="url-edit-box">
               <label>링크(URL) 변경</label>
-              <input
-                ref={urlRef}
-                value={urlEditVal}
-                onChange={e => setUrlEditVal(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") commitUrl(); if (e.key === "Escape") setUrlEditId(null); }}
-                placeholder="https://example.com"
-              />
+              <input ref={urlRef} value={urlEditVal} onChange={e => setUrlEditVal(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") commitUrl(); if (e.key === "Escape") setUrlEditId(null); }} placeholder="https://example.com" />
               <div className="url-edit-btns">
                 <button onClick={() => setUrlEditId(null)}>취소</button>
                 <button className="url-edit-save" onClick={commitUrl}>저장</button>
@@ -388,29 +372,21 @@ export default function Portal() {
         const isArchived = trash.some(t => t.id === ctxMenu.id);
         const isActive = tabs.some(t => t.id === ctxMenu.id);
         return (
-          <div
-            className="ctx-menu"
-            style={{ left: ctxMenu.x, top: ctxMenu.y }}
-            onClick={e => e.stopPropagation()}
-          >
-            {isActive && (
-              <>
-                <button onClick={() => { const t = tabs.find(x => x.id === ctxMenu.id); if (t) startRename(t); setCtxMenu(null); }}>이름 변경</button>
-                <button onClick={() => startUrlEdit(ctxMenu.id)}>링크 변경</button>
-                <button onClick={() => { setTabs(p => p.map(t => t.id === ctxMenu.id ? { ...t, pinned: !t.pinned } : t)); setCtxMenu(null); }}>
-                  {tabs.find(t => t.id === ctxMenu.id)?.pinned ? "즐겨찾기 해제" : "즐겨찾기 등록"}
-                </button>
-                <div className="ctx-divider" />
-                <button onClick={() => { softDelete(ctxMenu.id); setCtxMenu(null); }}>보관</button>
-              </>
-            )}
-            {isArchived && (
-              <>
-                <button onClick={() => { restoreTab(ctxMenu.id); setCtxMenu(null); }}>복원</button>
-                <div className="ctx-divider" />
-                <button className="ctx-danger" onClick={() => { permanentDelete(ctxMenu.id); setCtxMenu(null); }}>완전 삭제</button>
-              </>
-            )}
+          <div className="ctx-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }} onClick={e => e.stopPropagation()}>
+            {isActive && (<>
+              <button onClick={() => { const t = tabs.find(x => x.id === ctxMenu.id); if (t) startRename(t); setCtxMenu(null); }}>이름 변경</button>
+              <button onClick={() => startUrlEdit(ctxMenu.id)}>링크 변경</button>
+              <button onClick={() => { setTabs(p => p.map(t => t.id === ctxMenu.id ? { ...t, pinned: !t.pinned } : t)); const t = tabs.find(x => x.id === ctxMenu.id); if (t) api.put('/api/projects', { id: t.id, pinned: t.pinned ? 0 : 1 }); setCtxMenu(null); }}>
+                {tabs.find(t => t.id === ctxMenu.id)?.pinned ? "즐겨찾기 해제" : "즐겨찾기 등록"}
+              </button>
+              <div className="ctx-divider" />
+              <button onClick={() => { softDelete(ctxMenu.id); setCtxMenu(null); }}>보관</button>
+            </>)}
+            {isArchived && (<>
+              <button onClick={() => { restoreTab(ctxMenu.id); setCtxMenu(null); }}>복원</button>
+              <div className="ctx-divider" />
+              <button className="ctx-danger" onClick={() => { permanentDelete(ctxMenu.id); setCtxMenu(null); }}>완전 삭제</button>
+            </>)}
           </div>
         );
       })()}
@@ -419,108 +395,125 @@ export default function Portal() {
       <div className="vp">
         <header className="vp__toolbar">
           <div className="vp__nav">
-            <ChevronLeft size={16}/>
-            <ChevronRight size={16} opacity={.35}/>
-            <RotateCw size={14}/>
+            <ChevronLeft size={16}/><ChevronRight size={16} opacity={.35}/><RotateCw size={14}/>
           </div>
           <div className="vp__url">
-            <Lock size={11}/>
-            <b>{active.url.split("/")[0]}</b>
+            <Lock size={11}/><b>{active.url.split("/")[0]}</b>
             {active.url.includes("/") && <span>/{active.url.split("/").slice(1).join("/")}</span>}
           </div>
           <div className="vp__ext">
             <PanelRight size={16} color={panelOpen ? "var(--tint)" : undefined} onClick={() => setPanelOpen(v => !v)} />
           </div>
         </header>
-
         <div className="vp__body">
           {(() => {
             const url = active.url;
-            if (!url) {
-              return (
-                <div style={{ padding:"60px 40px", color:"var(--ink-3)", textAlign:"center" }}>
-                  <h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active.label}</h2>
-                  <p>링크를 설정하려면 우클릭 → 링크 변경</p>
-                </div>
-              );
-            }
-
-            /* Build embeddable URL */
+            if (!url) return (<div style={{ padding:"60px 40px", color:"var(--ink-3)", textAlign:"center" }}><h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active.label}</h2><p>링크를 설정하려면 우클릭 → 링크 변경</p></div>);
             let embedUrl = url.startsWith("http") ? url : `https://${url}`;
-
-            /* Google Drive folder → embedder */
-            if (embedUrl.includes("drive.google.com/drive/folders/")) {
-              const folderId = embedUrl.match(/folders\/([^?&#]+)/)?.[1];
-              if (folderId) embedUrl = `https://drive.google.com/embeddedfolderview?id=${folderId}#list`;
-            }
-            /* Google Docs → preview */
-            else if (embedUrl.includes("docs.google.com/document/d/")) {
-              embedUrl = embedUrl.replace(/\/edit.*$/, "/preview");
-            }
-            /* Google Sheets → preview */
-            else if (embedUrl.includes("docs.google.com/spreadsheets/d/")) {
-              embedUrl = embedUrl.replace(/\/edit.*$/, "/preview");
-            }
-            /* Google Slides → embed */
-            else if (embedUrl.includes("docs.google.com/presentation/d/")) {
-              embedUrl = embedUrl.replace(/\/edit.*$/, "/embed?start=false&loop=false&delayms=3000");
-            }
-            /* YouTube */
-            else if (embedUrl.includes("youtube.com/watch")) {
-              const vid = new URL(embedUrl).searchParams.get("v");
-              if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`;
-            } else if (embedUrl.includes("youtu.be/")) {
-              const vid = embedUrl.split("youtu.be/")[1]?.split(/[?#]/)[0];
-              if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`;
-            }
-
-            return (
-              <iframe
-                src={embedUrl}
-                style={{ width:"100%", height:"100%", border:"none" }}
-                allow="autoplay; encrypted-media"
-                allowFullScreen
-                sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-              />
-            );
+            if (embedUrl.includes("drive.google.com/drive/folders/")) { const fid = embedUrl.match(/folders\/([^?&#]+)/)?.[1]; if (fid) embedUrl = `https://drive.google.com/embeddedfolderview?id=${fid}#list`; }
+            else if (embedUrl.includes("docs.google.com/document/d/")) embedUrl = embedUrl.replace(/\/edit.*$/, "/preview");
+            else if (embedUrl.includes("docs.google.com/spreadsheets/d/")) embedUrl = embedUrl.replace(/\/edit.*$/, "/preview");
+            else if (embedUrl.includes("docs.google.com/presentation/d/")) embedUrl = embedUrl.replace(/\/edit.*$/, "/embed?start=false&loop=false&delayms=3000");
+            else if (embedUrl.includes("youtube.com/watch")) { const vid = new URL(embedUrl).searchParams.get("v"); if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`; }
+            else if (embedUrl.includes("youtu.be/")) { const vid = embedUrl.split("youtu.be/")[1]?.split(/[?#]/)[0]; if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`; }
+            return <iframe src={embedUrl} style={{ width:"100%", height:"100%", border:"none" }} allow="autoplay; encrypted-media" allowFullScreen sandbox="allow-same-origin allow-scripts allow-popups allow-forms" />;
           })()}
         </div>
       </div>
 
       {/* ═══ RIGHT PANEL ═══ */}
       <div className="rp">
+        {/* Header */}
         <div className="rp__header">
-          <div style={{ display:"flex", gap:10 }}><MessageSquare size={15}/></div>
+          <div className="rp__tabs-nav">
+            <button className={`rp__tab-btn ${rpTab==='checklist' ? 'is-active' : ''}`} onClick={() => setRpTab('checklist')}><CheckSquare size={13}/> 체크리스트</button>
+            <button className={`rp__tab-btn ${rpTab==='links' ? 'is-active' : ''}`} onClick={() => setRpTab('links')}><Link2 size={13}/> 링크</button>
+            <button className={`rp__tab-btn ${rpTab==='memos' ? 'is-active' : ''}`} onClick={() => setRpTab('memos')}><MessageSquare size={13}/> 메모</button>
+          </div>
           <div style={{ display:"flex", gap:10 }}>
-            <Pin size={15}/>
-            <X size={15} onClick={() => setPanelOpen(false)}/>
+            <X size={15} style={{ cursor:"pointer" }} onClick={() => setPanelOpen(false)}/>
           </div>
         </div>
+
+        {/* Tab content */}
         <div className="rp__body">
-          <div className="rp__card">
-            <h3><Zap size={14} fill="var(--ink)"/> Browse Skills</h3>
-            <p>Make complex tasks simple and repeatable.</p>
-          </div>
-          <div className="rp__hint">
-            <strong>Shortcuts for complex tasks</strong>
-            Type / to use a skill
-          </div>
+          {/* ── CHECKLIST ── */}
+          {rpTab === 'checklist' && (
+            <div className="rp-section">
+              <div className="rp-section__title">{active.label} 체크리스트</div>
+              {checks.length === 0 && <p className="rp-empty">아직 항목이 없습니다</p>}
+              {checks.map(c => (
+                <div key={c.id} className={`check-item ${c.checked ? 'is-done' : ''}`}>
+                  <button className="check-item__box" onClick={() => toggleCheck(c.id)}>
+                    {c.checked ? <CheckSquare size={16} color="var(--tint)"/> : <Square size={16}/>}
+                  </button>
+                  <span className="check-item__text">{c.text}</span>
+                  <button className="check-item__del" onClick={() => removeCheck(c.id)}><X size={12}/></button>
+                </div>
+              ))}
+              <div className="check-add">
+                <input value={newCheck} onChange={e => setNewCheck(e.target.value)} placeholder="할 일 추가..."
+                  onKeyDown={e => { if (e.key === "Enter") addCheck(); }} />
+                <button onClick={addCheck}><Plus size={14}/></button>
+              </div>
+            </div>
+          )}
+
+          {/* ── LINKS ── */}
+          {rpTab === 'links' && (
+            <div className="rp-section">
+              <div className="rp-section__title">{active.label} 바로가기</div>
+              {links.length === 0 && <p className="rp-empty">링크 버튼을 추가하세요</p>}
+              {links.map(l => (
+                <div key={l.id} className="link-card">
+                  <a href={l.url.startsWith('http') ? l.url : `https://${l.url}`} target="_blank" rel="noreferrer" className="link-card__main">
+                    <img src={`https://www.google.com/s2/favicons?domain=${l.url.replace(/https?:\/\//, '').split('/')[0]}&sz=32`} alt="" width={16} height={16} style={{ borderRadius:2 }}/>
+                    <span>{l.label}</span>
+                    <ExternalLink size={12}/>
+                  </a>
+                  <button className="link-card__del" onClick={() => removeLink(l.id)}><X size={12}/></button>
+                </div>
+              ))}
+              <div className="link-add">
+                <input value={newLinkLabel} onChange={e => setNewLinkLabel(e.target.value)} placeholder="버튼 이름" />
+                <input value={newLinkUrl} onChange={e => setNewLinkUrl(e.target.value)} placeholder="URL"
+                  onKeyDown={e => { if (e.key === "Enter") addLink(); }} />
+                <button onClick={addLink}><Plus size={14}/></button>
+              </div>
+            </div>
+          )}
+
+          {/* ── MEMOS ── */}
+          {rpTab === 'memos' && (
+            <div className="rp-section rp-section--memos">
+              <div className="rp-section__title">{active.label} 메모</div>
+              <div className="memo-thread">
+                {memos.length === 0 && <p className="rp-empty">메모를 남겨보세요</p>}
+                {memos.map(m => (
+                  <div key={m.id} className="memo-bubble">
+                    <div className="memo-bubble__text">{m.text}</div>
+                    <div className="memo-bubble__meta">
+                      <span>{new Date(m.created_at).toLocaleString('ko-KR', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}</span>
+                      <button onClick={() => removeMemo(m.id)}><Trash2 size={11}/></button>
+                    </div>
+                  </div>
+                ))}
+                <div ref={memosEndRef} />
+              </div>
+            </div>
+          )}
         </div>
-        <div className="rp__footer">
-          <div className="rp__chips">
-            <button className="chip"><Search size={10}/> Explain</button>
-            <button className="chip"><Search size={10}/> Analyze</button>
-            <button className="chip"><Search size={10}/> Summarize</button>
+
+        {/* Memo input (always visible in memo tab) */}
+        {rpTab === 'memos' && (
+          <div className="rp__footer">
+            <div className="rp__input">
+              <input value={newMemo} onChange={e => setNewMemo(e.target.value)} placeholder="메모를 입력하세요..."
+                onKeyDown={e => { if (e.key === "Enter") addMemo(); }} />
+              <button className="rp__send" onClick={addMemo}><ArrowUp size={12}/></button>
+            </div>
           </div>
-          <div style={{ fontSize:".78rem", color:"var(--ink-3)", marginBottom:8, display:"flex", alignItems:"center", gap:4 }}>
-            <div style={{ width:14, height:14, borderRadius:3, background: active.color, display:"inline-block" }} />
-            <b style={{ color:"var(--ink)" }}>{active.label.slice(0,20)}</b>
-          </div>
-          <div className="rp__input">
-            <input placeholder="Ask a question about this page..." />
-            <button className="rp__send"><ArrowUp size={12}/></button>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
