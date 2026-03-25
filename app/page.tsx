@@ -2,29 +2,37 @@
 
 import { useState, useRef, useEffect } from "react";
 import { 
-  Star, Trash2, Archive, Plus, PanelRight, 
-  Layout, Briefcase, FileText, Search, Globe, ChevronRight
+  Plus, MoreHorizontal, FileText, ChevronLeft, ChevronRight, RotateCw, 
+  Lock, ArrowUp, X, Sparkles, Pin, LayoutList, Search, MessageSquare, Zap
 } from "lucide-react";
 
 type Tab = {
   id: string;
   title: string;
+  url: string;
   isFavorite: boolean;
   memo: string;
-  iconType: "layout" | "briefcase" | "file" | "globe";
+  iconType: string;
 };
 
 const initialTabs: Tab[] = [
-  { id: "1", title: "제곡교회 성전건축", isFavorite: true, memo: "제곡교회 성전건축 관련 일정 및 예산 관리 페이지. 현재 GitHub에 리포지토리 구성 완료.", iconType: "briefcase" },
-  { id: "2", title: "주간 업무 보고", isFavorite: true, memo: "이번 주 주간 업무 보고 작성 중.", iconType: "file" },
-  { id: "3", title: "신규 디자인 시안", isFavorite: false, memo: "메인 페이지 시안 검토 필요.", iconType: "layout" },
-  { id: "4", title: "거래처 리서치", isFavorite: false, memo: "A회사와 B회사의 단가 비교표 확인.", iconType: "globe" },
+  { id: "fav1", title: "Gmail", url: "mail.google.com", isFavorite: true, memo: "", iconType: "mail" },
+  { id: "fav2", title: "Drive", url: "drive.google.com", isFavorite: true, memo: "", iconType: "drive" },
+  { id: "fav3", title: "Calendar", url: "calendar.google.com", isFavorite: true, memo: "", iconType: "calendar" },
+  { id: "fav4", title: "Portal", url: "portal.local", isFavorite: true, memo: "", iconType: "portal" },
+  { id: "fav5", title: "Tools", url: "tools.local", isFavorite: true, memo: "", iconType: "tools" },
+  
+  { id: "1", title: "해밀학교 대상 연구 참여자 정보 (2026", url: "docs.google.com", isFavorite: false, memo: "해밀학교 연구 대상자 스프레드시트", iconType: "file" },
+  { id: "2", title: "vip7612-maker/lee-work-portal", url: "github.com/vip7612-maker/lee-work-portal", isFavorite: false, memo: "업무포털 리포지토리", iconType: "github" },
+  { id: "3", title: "Create Next App", url: "localhost:3000", isFavorite: false, memo: "로컬 개발 환경", iconType: "next" },
+  { id: "4", title: "lee-work-portal.vercel.app", url: "lee-work-portal.vercel.app", isFavorite: false, memo: "프로덕션 배포 사이트", iconType: "vercel" },
+  { id: "5", title: "사학연금공단 대문페이지", url: "tp.or.kr", isFavorite: false, memo: "사학연금공단 벤치마킹", iconType: "globe" },
 ];
 
 export default function WorkPortal() {
   const [tabs, setTabs] = useState<Tab[]>(initialTabs);
-  const [activeTabId, setActiveTabId] = useState<string>("1");
-  const [sidebarWidth, setSidebarWidth] = useState(280);
+  const [activeTabId, setActiveTabId] = useState<string>("5");
+  const [sidebarWidth, setSidebarWidth] = useState(250);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
 
   const isResizing = useRef(false);
@@ -33,8 +41,8 @@ export default function WorkPortal() {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing.current) return;
       let newWidth = e.clientX;
-      if (newWidth < 220) newWidth = 220;
-      if (newWidth > 600) newWidth = 600;
+      if (newWidth < 200) newWidth = 200;
+      if (newWidth > 400) newWidth = 400;
       setSidebarWidth(newWidth);
     };
 
@@ -57,45 +65,43 @@ export default function WorkPortal() {
 
   const handleAddTab = () => {
     const newId = Date.now().toString();
-    const newTab: Tab = {
-      id: newId,
-      title: `새 업무 탭 ${tabs.length + 1}`,
-      isFavorite: false,
-      memo: "",
-      iconType: "file"
-    };
-    setTabs([...tabs, newTab]);
+    setTabs([...tabs, { id: newId, title: "New Tab", url: "", isFavorite: false, memo: "", iconType: "file" }]);
     setActiveTabId(newId);
   };
 
-  const handleToggleFavorite = (id: string, e: React.MouseEvent) => {
+  const handleMoveToFavorite = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setTabs(tabs.map(t => t.id === id ? { ...t, isFavorite: !t.isFavorite } : t));
+    setTabs(tabs.map(t => t.id === id ? { ...t, isFavorite: true } : t));
   };
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const newTabs = tabs.filter(t => t.id !== id);
-    setTabs(newTabs);
-    if (activeTabId === id && newTabs.length > 0) setActiveTabId(newTabs[0].id);
+    setTabs(tabs.filter(t => t.id !== id));
   };
 
-  const handleMemoChange = (val: string) => {
-    setTabs(tabs.map(t => t.id === activeTabId ? { ...t, memo: val } : t));
+  const getSidebarIcon = (type: string) => {
+    // Return simple colors or generic shapes representing icons
+    const colorMap: Record<string, string> = {
+      mail: "#ea4335", drive: "#34a853", calendar: "#fbbc04", portal: "#4285f4", tools: "#8ab4f8",
+      file: "#4285f4", github: "#24292e", next: "#000000", vercel: "#000000", globe: "#9aa0a6"
+    };
+    return (
+      <div style={{ width: 14, height: 14, borderRadius: 3, backgroundColor: colorMap[type] || "#cccccc" }} />
+    );
   };
 
-  const getIcon = (type: string, size = 18) => {
-    switch (type) {
-      case "layout": return <Layout size={size} strokeWidth={2.5} />;
-      case "briefcase": return <Briefcase size={size} strokeWidth={2.5}  />;
-      case "globe": return <Globe size={size} strokeWidth={2.5}  />;
-      default: return <FileText size={size} strokeWidth={2.5}  />;
-    }
+  const getFavIcon = (type: string) => {
+    const colorMap: Record<string, string> = {
+      mail: "#ea4335", drive: "#34a853", calendar: "#fbbc04", portal: "#4285f4", tools: "#8ab4f8"
+    };
+    return (
+      <div style={{ width: 20, height: 20, borderRadius: 4, backgroundColor: colorMap[type] || "#cccccc" }} />
+    );
   };
 
   return (
     <div className="layout-container">
-      {/* 1. Left Sidebar */}
+      {/* 1. Left Sidebar (Dia Style) */}
       <aside className="sidebar" style={{ width: sidebarWidth }}>
         <div 
           className="resizer"
@@ -104,150 +110,153 @@ export default function WorkPortal() {
             document.body.style.cursor = "col-resize";
           }}
         />
-        <div className="title-area">
-          <div className="logo"><Briefcase size={14} strokeWidth={3} /></div>
-          이경진 업무포털
+        
+        {/* Mac Controls and Profile */}
+        <div className="mac-controls">
+          <div className="mac-btn mac-close"></div>
+          <div className="mac-btn mac-min"></div>
+          <div className="mac-btn mac-max"></div>
+          <div className="profile-area">
+             <div style={{width: 20, height: 20, borderRadius: '50%', background: '#ccc', display: 'flex', alignItems:'center', justifyContent:'center'}}>
+                <span style={{fontSize: '10px', color: '#333'}}>DL</span>
+             </div>
+             David_Lee
+          </div>
         </div>
 
-        {favorites.length > 0 && (
-          <>
-            <div className="section-title">자주 찾는 업무</div>
-            <div className="favorites-container">
-              {favorites.map(tab => (
-                <div 
-                  key={tab.id} 
-                  className={`favorite-icon ${activeTabId === tab.id ? "active" : ""}`}
-                  onClick={() => setActiveTabId(tab.id)}
-                  title={tab.title}
-                >
-                  {getIcon(tab.iconType, 22)}
-                </div>
-              ))}
+        {/* Favorites Grid (4x2 style) */}
+        <div className="favorites-grid">
+          {favorites.map(tab => (
+            <div 
+              key={tab.id} 
+              className={`fav-icon ${activeTabId === tab.id ? "active" : ""}`}
+              onClick={() => setActiveTabId(tab.id)}
+              title={tab.title}
+            >
+              {getFavIcon(tab.iconType)}
             </div>
-          </>
-        )}
+          ))}
+          {/* Empty slots to match screenshot grid feel */}
+          <div className="fav-icon" style={{opacity: 0.5}}>+</div>
+        </div>
 
-        <div className="section-title">스페이스 및 폴더</div>
+        {/* Regular Tabs List */}
         <div className="tabs-container">
-          {regularTabs.map(tab => (
+          {regularTabs.map((tab, i) => (
             <div 
               key={tab.id} 
               className={`tab-item ${activeTabId === tab.id ? "active" : ""}`}
               onClick={() => setActiveTabId(tab.id)}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ color: activeTabId === tab.id ? 'var(--accent)' : 'var(--text-muted)' }}>
-                  {getIcon(tab.iconType, 18)}
-                </div>
-                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: sidebarWidth - 110 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                {getSidebarIcon(tab.iconType)}
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {tab.title}
                 </span>
               </div>
-              
               <div className="tab-actions">
-                <button className="action-btn" title="즐겨찾기로 이동 (위로 올리기)" onClick={(e) => handleToggleFavorite(tab.id, e)}>
-                  <Star size={16} />
+                <button className="action-btn" title="Add to Favorites" onClick={(e) => handleMoveToFavorite(tab.id, e)}>
+                  <ArrowUp size={12} />
                 </button>
-                <button className="action-btn" title="보관함" onClick={(e) => { e.stopPropagation(); alert('보관됨'); }}>
-                  <Archive size={16} />
-                </button>
-                <button className="action-btn" title="탭 닫기" onClick={(e) => handleDelete(tab.id, e)}>
-                  <Trash2 size={16} />
+                <button className="action-btn" title="Close Tab" onClick={(e) => handleDelete(tab.id, e)}>
+                  <X size={12} />
                 </button>
               </div>
             </div>
           ))}
+          <button className="add-tab-btn" onClick={handleAddTab}>
+             <Plus size={14} /> New Tab
+          </button>
         </div>
-
-        <button className="add-btn" onClick={handleAddTab}>
-          <Plus size={20} /> 새 탭 만들기
-        </button>
       </aside>
 
-      {/* 2. Main View */}
-      <main className="main-view" key={activeTabId}>
-        <header className="top-bar">
-          <div className="view-title">
-            <div style={{ padding: '6px', background: 'var(--accent-light)', borderRadius: '8px', color: 'var(--accent)' }}>
-               {getIcon(activeTab?.iconType || 'file', 20)}
-            </div>
-            {activeTab ? activeTab.title : "선택된 업무가 없습니다"}
+      {/* 2. Main Center View */}
+      <main className="main-view">
+        <header className="browser-top-bar">
+          <div className="nav-buttons">
+            <ChevronLeft size={18} />
+            <ChevronRight size={18} color="#cccccc" />
+            <RotateCw size={16} />
           </div>
-          <button 
-            className={`chelsea-btn ${isRightPanelOpen ? 'active' : ''}`} 
-            onClick={() => setIsRightPanelOpen(!isRightPanelOpen)}
-          >
-            <PanelRight size={18} />
-            {isRightPanelOpen ? '첼시 닫기' : '첼시 열기'}
-          </button>
+          <div className="url-bar">
+            <Lock size={12} />
+            {activeTab?.url.split('/')[0]} <span>/ {activeTab?.url.split('/').slice(1).join('/') || activeTab?.title}</span>
+          </div>
+          <div className="ext-buttons">
+            <div style={{width:16,height:16,borderRadius:'50%',background:'linear-gradient(45deg, #f093fb 0%, #f5576c 100%)'}}></div>
+            <div style={{width:16,height:16,borderRadius:'50%',background:'linear-gradient(45deg, #84fab0 0%, #8fd3f4 100%)'}}></div>
+            <LayoutList size={18} color={isRightPanelOpen ? "var(--accent)" : "#86868b"} style={{cursor:'pointer'}} onClick={() => setIsRightPanelOpen(!isRightPanelOpen)} />
+          </div>
         </header>
 
         <div className="content-area">
-          {activeTab ? (
-            <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center', marginTop: '60px' }}>
-              <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'center' }}>
-                <div style={{ padding: '40px', backgroundColor: 'var(--sidebar-hover)', borderRadius: '30px', color: 'var(--accent)' }}>
-                  {getIcon(activeTab.iconType, 80)}
+          {/* MOCKUP CONTENT OF TP.OR.KR IF TAB IS 5 */}
+          {activeTab?.id === "5" ? (
+             <div style={{padding: '40px', fontFamily: 'sans-serif'}}>
+                <div style={{textAlign: 'center', marginBottom: '40px'}}>
+                   <span style={{background: '#2b2a65', color: '#fff', padding: '6px 16px', borderRadius: '20px', fontSize: '0.85rem'}}>대문페이지</span>
+                   <h1 style={{color: '#2b2a65', fontSize: '2rem', marginTop: '20px'}}>교직원과 함께하는 연금·복지 전문기관</h1>
+                   <p style={{color: '#666'}}>안녕하세요, 사립학교교직원연금공단입니다.<br/>원하시는 서비스를 선택하세요.</p>
                 </div>
-              </div>
-              <h2 style={{ fontSize: '2rem', color: 'var(--text-title)', marginBottom: '16px', fontWeight: '700', letterSpacing: '-0.03em' }}>
-                {activeTab.title}
-              </h2>
-              <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)' }}>
-                이 공간은 <b>{activeTab.title}</b>의 메인 뷰어입니다.
-                <br/>실제 서비스 연동 시 Iframe이나 실시간 데이터가 여기에 표시됩니다.
-              </p>
-              
-              <div style={{ marginTop: '50px', display: 'flex', justifyContent: 'center' }}>
-                <div style={{ 
-                  display: 'flex', alignItems: 'center', background: 'var(--sidebar-hover)', 
-                  border: '1px solid var(--border-light)', borderRadius: '12px', padding: '12px 20px', width: '100%',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
-                }}>
-                  <Search size={20} style={{ marginRight: '12px', color: 'var(--text-muted)' }} />
-                  <input 
-                    type="text" 
-                    placeholder="Search or enter URL (e.g. google.com)" 
-                    style={{ background: 'transparent', border: 'none', outline: 'none', width: '100%', color: 'var(--text-title)', fontSize: '1rem' }} 
-                  />
-                  <div style={{ background: 'var(--center-bg)', padding: '4px', borderRadius: '6px', marginLeft: '8px' }}>
-                     <ChevronRight size={18} color="var(--text-muted)"/>
-                  </div>
+                <div style={{display: 'flex', gap: '20px', justifyContent: 'center'}}>
+                   <div style={{border: '1px solid #eee', padding: '24px', borderRadius: '16px', width: '250px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'}}>
+                      <h3>연금 서비스</h3>
+                      <p style={{fontSize: '0.9rem', color: '#666', marginTop:'40px'}}>조회·신청·확인서 발급 등 연금과 관련된 서비스를 이용하세요</p>
+                   </div>
+                   <div style={{border: '1px solid #eee', padding: '24px', borderRadius: '16px', width: '250px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'}}>
+                      <h3>대표 홈페이지</h3>
+                      <p style={{fontSize: '0.9rem', color: '#666', marginTop:'40px'}}>사학연금과 관련된 다양한 정보를 확인하세요</p>
+                   </div>
+                   <div style={{border: '1px solid #eee', padding: '24px', borderRadius: '16px', width: '250px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'}}>
+                      <h3>통합복지 플랫폼</h3>
+                      <p style={{fontSize: '0.9rem', color: '#666', marginTop:'40px'}}>사학연금의 교직원 복지와 맞춤형 서비스를 확인해 보세요</p>
+                   </div>
                 </div>
-              </div>
-            </div>
+             </div>
           ) : (
-            <div style={{ textAlign: 'center', marginTop: '100px', color: 'var(--text-muted)' }}>
-              왼쪽에서 새 업무 탭을 추가해보세요.
+            <div style={{padding: '40px', textAlign: 'center', color: '#888'}}>
+              <h1 style={{color: '#333'}}>{activeTab?.title}</h1>
+              <p>{activeTab?.url}</p>
             </div>
           )}
         </div>
       </main>
 
-      {/* 3. Right Panel (Chelsea) */}
+      {/* 3. Right Panel (Chelsea/AI) */}
       <aside className={`right-panel ${!isRightPanelOpen ? "closed" : ""}`}>
-        <div className="panel-header">
-          <PanelRight size={20} color="var(--accent)" />
-          <span>첼시 <span style={{fontSize:'0.85rem', color:'var(--text-muted)', fontWeight:'500'}}>(추가 정보 & 메모)</span></span>
+        <div className="rp-header">
+           <div style={{display:'flex', gap:'12px'}}>
+             <MessageSquare size={16} />
+           </div>
+           <div style={{display:'flex', gap:'12px'}}>
+             <Pin size={16} />
+             <X size={16} style={{cursor:'pointer'}} onClick={() => setIsRightPanelOpen(false)} />
+           </div>
         </div>
-        <div className="panel-body">
-          {activeTab ? (
-            <>
-              <div style={{ marginBottom: '16px', fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <FileText size={14}/> 현재 타겟: <b style={{color: 'var(--text-title)'}}>{activeTab.title}</b>
-              </div>
-              <textarea 
-                className="memo-textarea"
-                placeholder={`이곳에 ${activeTab.title}에 관련된 영감, 할 일, 혹은 요약 정보를 유연하게 기록하세요.\n자동으로 저장됩니다.`}
-                value={activeTab.memo}
-                onChange={(e) => handleMemoChange(e.target.value)}
-              />
-            </>
-          ) : (
-            <div style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '40px' }}>
-              먼저 좌측 탭을 선택하세요.
-            </div>
-          )}
+        
+        <div className="rp-body">
+           <div className="skill-card">
+              <h3><Zap size={16} fill="var(--text-title)" /> Browse Skills</h3>
+              <p>Make complex tasks simple and repeatable.</p>
+           </div>
+           
+           <div className="rp-shortcuts">
+              <span style={{fontWeight: 600}}>Shortcuts for complex tasks</span><br/>
+              <span style={{color: '#b0b0b5'}}>Type / to use a skill</span>
+           </div>
+        </div>
+
+        <div className="rp-footer">
+           <div className="prompt-actions">
+              <button className="prompt-btn"><Search size={12}/> Explain</button>
+              <button className="prompt-btn"><Search size={12}/> Analyze</button>
+              <button className="prompt-btn"><Search size={12}/> Summarize</button>
+           </div>
+           <div className="chat-input-box">
+              <div style={{color: 'var(--accent)', fontWeight: 'bold'}}>tp</div>
+              <input type="text" placeholder="Ask a question about this page..." />
+              <div className="chat-submit"><ArrowUp size={14} /></div>
+           </div>
         </div>
       </aside>
     </div>
