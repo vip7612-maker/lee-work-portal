@@ -434,32 +434,56 @@ export default function Portal() {
         </header>
 
         <div className="vp__body">
-          {active.id === "5" ? (
-            <div style={{ padding:"48px 40px", maxWidth:860, margin:"0 auto" }}>
-              <div style={{ textAlign:"center", marginBottom:40 }}>
-                <span style={{ background:"#2b2a65", color:"#fff", padding:"5px 14px", borderRadius:14, fontSize:".78rem", fontWeight:600 }}>대문페이지</span>
-                <h1 style={{ color:"#2b2a65", fontSize:"1.6rem", margin:"16px 0 8px", fontWeight:700 }}>교직원과 함께하는 연금·복지 전문기관</h1>
-                <p style={{ color:"#888", fontSize:".92rem" }}>안녕하세요, 사립학교교직원연금공단입니다.<br/>원하시는 서비스를 선택하세요.</p>
-              </div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16 }}>
-                {[["연금 서비스","조회·신청·확인서 발급 등\n연금과 관련된 서비스를 이용하세요","#3db2a0"],
-                  ["대표 홈페이지","사학연금과 관련된\n다양한 정보를 확인하세요","#5b8dd9"],
-                  ["통합복지 플랫폼","사학연금의 교직원 복지와\n맞춤형 서비스를 확인해 보세요","#c77dba"]
-                ].map(([t,d,c]) => (
-                  <div key={t} style={{ border:"1px solid var(--rule)", borderRadius:12, padding:"28px 20px", position:"relative" }}>
-                    <h3 style={{ fontSize:"1.05rem", fontWeight:700, color:"var(--ink)", marginBottom:6 }}>{t}</h3>
-                    <div style={{ width:48, height:48, borderRadius:"50%", background:`${c}22`, position:"absolute", top:24, right:20 }} />
-                    <p style={{ fontSize:".82rem", color:"var(--ink-3)", whiteSpace:"pre-line", marginTop:28, lineHeight:1.6 }}>{d}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div style={{ padding:"60px 40px", color:"var(--ink-3)" }}>
-              <h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active.label}</h2>
-              <p>{active.url || "빈 탭"}</p>
-            </div>
-          )}
+          {(() => {
+            const url = active.url;
+            if (!url) {
+              return (
+                <div style={{ padding:"60px 40px", color:"var(--ink-3)", textAlign:"center" }}>
+                  <h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active.label}</h2>
+                  <p>링크를 설정하려면 우클릭 → 링크 변경</p>
+                </div>
+              );
+            }
+
+            /* Build embeddable URL */
+            let embedUrl = url.startsWith("http") ? url : `https://${url}`;
+
+            /* Google Drive folder → embedder */
+            if (embedUrl.includes("drive.google.com/drive/folders/")) {
+              const folderId = embedUrl.match(/folders\/([^?&#]+)/)?.[1];
+              if (folderId) embedUrl = `https://drive.google.com/embeddedfolderview?id=${folderId}#list`;
+            }
+            /* Google Docs → preview */
+            else if (embedUrl.includes("docs.google.com/document/d/")) {
+              embedUrl = embedUrl.replace(/\/edit.*$/, "/preview");
+            }
+            /* Google Sheets → preview */
+            else if (embedUrl.includes("docs.google.com/spreadsheets/d/")) {
+              embedUrl = embedUrl.replace(/\/edit.*$/, "/preview");
+            }
+            /* Google Slides → embed */
+            else if (embedUrl.includes("docs.google.com/presentation/d/")) {
+              embedUrl = embedUrl.replace(/\/edit.*$/, "/embed?start=false&loop=false&delayms=3000");
+            }
+            /* YouTube */
+            else if (embedUrl.includes("youtube.com/watch")) {
+              const vid = new URL(embedUrl).searchParams.get("v");
+              if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`;
+            } else if (embedUrl.includes("youtu.be/")) {
+              const vid = embedUrl.split("youtu.be/")[1]?.split(/[?#]/)[0];
+              if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`;
+            }
+
+            return (
+              <iframe
+                src={embedUrl}
+                style={{ width:"100%", height:"100%", border:"none" }}
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+                sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+              />
+            );
+          })()}
         </div>
       </div>
 
