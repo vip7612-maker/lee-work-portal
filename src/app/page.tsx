@@ -60,8 +60,8 @@ export default function Portal() {
   /* ═══ ALL HOOKS FIRST (React Rules of Hooks compliance) ═══ */
   const { data: session, status } = useSession();
 
-  const [tabs, setTabs]             = useState<Tab[]>(seed);
-  const [activeId, setActiveId]     = useState("5");
+  const [tabs, setTabs]             = useState<Tab[]>([]);
+  const [activeId, setActiveId]     = useState("");
   const [sbWidth, setSbWidth]       = useState(240);
   const [panelOpen, setPanelOpen]   = useState(true);
   const [trash, setTrash]           = useState<Tab[]>([]);
@@ -124,6 +124,8 @@ export default function Portal() {
         seed.forEach((t, i) => {
           api.post('/api/projects', { id: t.id, label: t.label, url: t.url, pinned: t.pinned ? 1 : 0, color: t.color, sort_order: i, archived: 0 });
         });
+        setTabs(seed);
+        setActiveId(seed[0].id);
       }
       setDbLoaded(true);
     }).catch(() => setDbLoaded(true));
