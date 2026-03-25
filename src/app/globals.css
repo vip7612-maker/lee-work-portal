@@ -204,7 +204,7 @@ html, body { margin:0; padding:0; height:100vh; overflow:hidden;
   flex: 1; display: flex; align-items: center; gap: 6px;
   background: var(--surface-dim); border-radius: 5px;
   padding: 5px 12px; font-size: .8rem; color: var(--ink-3);
-  max-width: 480px; margin: 0 auto;
+  overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 .vp__url b { color: var(--ink); font-weight: 600; }
 
