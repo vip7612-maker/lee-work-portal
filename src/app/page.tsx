@@ -17,6 +17,7 @@ type Tab = {
 type CheckItem = { id: string; project_id: string; text: string; checked: number; sort_order: number };
 type LinkItem  = { id: string; project_id: string; label: string; url: string; sort_order: number };
 type Comment   = { id: string; project_id: string; text: string; created_at: string };
+type VpTab     = { id: string; project_id: string; name: string; url: string; sort_order: number };
 
 const COLORS = ["#ea4335","#34a853","#fbbc04","#4285f4","#ff6d01","#673ab7","#00bcd4","#8bc34a"];
 
@@ -69,6 +70,11 @@ export default function Portal() {
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [memos, setMemos]           = useState<Comment[]>([]);
   const [newMemo, setNewMemo]       = useState("");
+  const [vpTabs, setVpTabs]         = useState<VpTab[]>([]);
+  const [activeVpTabId, setActiveVpTabId] = useState<string | null>(null);
+  const [showVpAdd, setShowVpAdd]   = useState(false);
+  const [vpNewName, setVpNewName]   = useState("");
+  const [vpNewUrl, setVpNewUrl]     = useState("");
 
   const editRef = useRef<HTMLInputElement>(null);
   const urlRef  = useRef<HTMLInputElement>(null);
@@ -116,6 +122,10 @@ export default function Portal() {
     api.fetchJSON(`/api/checklists?pid=${activeId}`).then(setChecks).catch(() => {});
     api.fetchJSON(`/api/links?pid=${activeId}`).then(setLinks).catch(() => {});
     api.fetchJSON(`/api/comments?pid=${activeId}`).then(setMemos).catch(() => {});
+    api.fetchJSON(`/api/viewport-tabs?pid=${activeId}`).then((rows: VpTab[]) => {
+      setVpTabs(rows || []);
+      setActiveVpTabId(rows && rows.length > 0 ? rows[0].id : null);
+    }).catch(() => {});
   }, [activeId, session]);
 
   useEffect(() => { memosEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [memos]);
@@ -200,6 +210,24 @@ export default function Portal() {
 
   const addMemo = () => { if (!newMemo.trim()) return; const item: Comment = { id: uid(), project_id: activeId, text: newMemo.trim(), created_at: new Date().toISOString() }; setMemos(p => [...p, item]); setNewMemo(""); api.post('/api/comments', item); };
   const removeMemo = (id: string) => { setMemos(p => p.filter(m => m.id !== id)); api.del('/api/comments', { id }); };
+
+  const addVpTab = () => {
+    if (!vpNewName.trim() || !vpNewUrl.trim()) return;
+    const item: VpTab = { id: uid(), project_id: activeId, name: vpNewName.trim(), url: vpNewUrl.trim(), sort_order: vpTabs.length };
+    setVpTabs(p => [...p, item]); setActiveVpTabId(item.id);
+    setVpNewName(""); setVpNewUrl(""); setShowVpAdd(false);
+    api.post('/api/viewport-tabs', item);
+  };
+  const removeVpTab = (id: string) => {
+    setVpTabs(p => p.filter(t => t.id !== id));
+    if (activeVpTabId === id) setActiveVpTabId(vpTabs.find(t => t.id !== id)?.id || null);
+    api.del('/api/viewport-tabs', { id });
+  };
+
+  const currentVpUrl = (() => {
+    if (activeVpTabId) { const vt = vpTabs.find(t => t.id === activeVpTabId); if (vt) return vt.url; }
+    return active.url;
+  })();
 
   if (!active) return <div className="login-screen"><p style={{ color:"var(--ink-3)" }}>프로젝트를 불러오는 중...</p></div>;
 
@@ -317,21 +345,53 @@ export default function Portal() {
 
       {/* ═══ VIEWPORT ═══ */}
       <div className="vp">
+        {/* Tab bar (area 1) */}
+        <div className="vp__tabbar">
+          <div className="vp__tabbar-list">
+            <button className={`vp__tab ${!activeVpTabId ? 'is-active' : ''}`}
+              onClick={() => setActiveVpTabId(null)}>
+              {active.label}
+            </button>
+            {vpTabs.map(vt => (
+              <button key={vt.id} className={`vp__tab ${activeVpTabId===vt.id ? 'is-active' : ''}`}
+                onClick={() => setActiveVpTabId(vt.id)}>
+                <span>{vt.name}</span>
+                <span className="vp__tab-x" onClick={e => { e.stopPropagation(); removeVpTab(vt.id); }}>×</span>
+              </button>
+            ))}
+            <button className="vp__tab-add" onClick={() => setShowVpAdd(v => !v)}><Plus size={12}/></button>
+          </div>
+          <div className="vp__ext">
+            <PanelRight size={16} color={panelOpen ? "var(--tint)" : undefined} onClick={() => setPanelOpen(v => !v)} />
+          </div>
+        </div>
+
+        {/* Add tab form */}
+        {showVpAdd && (
+          <div className="vp__tab-form">
+            <input value={vpNewName} onChange={e => setVpNewName(e.target.value)} placeholder="탭 이름"
+              onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addVpTab(); if (e.key === 'Escape') setShowVpAdd(false); }} />
+            <input value={vpNewUrl} onChange={e => setVpNewUrl(e.target.value)} placeholder="URL"
+              onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addVpTab(); if (e.key === 'Escape') setShowVpAdd(false); }} />
+            <button onClick={addVpTab}><Plus size={12}/></button>
+          </div>
+        )}
+
+        {/* URL bar */}
         <header className="vp__toolbar">
           <div className="vp__nav">
             <ChevronLeft size={16}/><ChevronRight size={16} opacity={.35}/><RotateCw size={14}/>
           </div>
           <div className="vp__url">
-            <Lock size={11}/><b>{active.url.split("/")[0]}</b>
-            {active.url.includes("/") && <span>/{active.url.split("/").slice(1).join("/")}</span>}
-          </div>
-          <div className="vp__ext">
-            <PanelRight size={16} color={panelOpen ? "var(--tint)" : undefined} onClick={() => setPanelOpen(v => !v)} />
+            <Lock size={11}/><b>{(currentVpUrl || '').split("/")[0]}</b>
+            {(currentVpUrl || '').includes("/") && <span>/{(currentVpUrl || '').split("/").slice(1).join("/")}</span>}
           </div>
         </header>
+
+        {/* Iframe (area 2) */}
         <div className="vp__body">
           {(() => {
-            const url = active.url;
+            const url = currentVpUrl;
             if (!url) return (<div style={{ padding:"60px 40px", color:"var(--ink-3)", textAlign:"center" }}><h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active.label}</h2><p>링크를 설정하려면 우클릭 → 링크 변경</p></div>);
             let embedUrl = url.startsWith("http") ? url : `https://${url}`;
             if (embedUrl.includes("drive.google.com/drive/folders/")) { const fid = embedUrl.match(/folders\/([^?&#]+)/)?.[1]; if (fid) embedUrl = `https://drive.google.com/embeddedfolderview?id=${fid}#list`; }
