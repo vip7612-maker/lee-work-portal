@@ -1,264 +1,211 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { 
-  Plus, MoreHorizontal, FileText, ChevronLeft, ChevronRight, RotateCw, 
-  Lock, ArrowUp, X, Sparkles, Pin, LayoutList, Search, MessageSquare, Zap
+import { useState, useRef, useEffect, useCallback } from "react";
+import {
+  ChevronLeft, ChevronRight, RotateCw, Lock,
+  Plus, X, ArrowUp, Star, Archive,
+  Zap, Search, Pin, MessageSquare,
+  PanelRight
 } from "lucide-react";
 
+/* ── Types ── */
 type Tab = {
   id: string;
-  title: string;
+  label: string;
   url: string;
-  isFavorite: boolean;
+  pinned: boolean;
   memo: string;
-  iconType: string;
+  color: string;          // dot colour
 };
 
-const initialTabs: Tab[] = [
-  { id: "fav1", title: "Gmail", url: "mail.google.com", isFavorite: true, memo: "", iconType: "mail" },
-  { id: "fav2", title: "Drive", url: "drive.google.com", isFavorite: true, memo: "", iconType: "drive" },
-  { id: "fav3", title: "Calendar", url: "calendar.google.com", isFavorite: true, memo: "", iconType: "calendar" },
-  { id: "fav4", title: "Portal", url: "portal.local", isFavorite: true, memo: "", iconType: "portal" },
-  { id: "fav5", title: "Tools", url: "tools.local", isFavorite: true, memo: "", iconType: "tools" },
-  
-  { id: "1", title: "해밀학교 대상 연구 참여자 정보 (2026", url: "docs.google.com", isFavorite: false, memo: "해밀학교 연구 대상자 스프레드시트", iconType: "file" },
-  { id: "2", title: "vip7612-maker/lee-work-portal", url: "github.com/vip7612-maker/lee-work-portal", isFavorite: false, memo: "업무포털 리포지토리", iconType: "github" },
-  { id: "3", title: "Create Next App", url: "localhost:3000", isFavorite: false, memo: "로컬 개발 환경", iconType: "next" },
-  { id: "4", title: "lee-work-portal.vercel.app", url: "lee-work-portal.vercel.app", isFavorite: false, memo: "프로덕션 배포 사이트", iconType: "vercel" },
-  { id: "5", title: "사학연금공단 대문페이지", url: "tp.or.kr", isFavorite: false, memo: "사학연금공단 벤치마킹", iconType: "globe" },
+const COLORS = ["#ea4335","#34a853","#fbbc04","#4285f4","#ff6d01","#673ab7","#00bcd4","#8bc34a"];
+
+const seed: Tab[] = [
+  { id:"p1", label:"Gmail",      url:"mail.google.com",    pinned:true, memo:"", color:"#ea4335" },
+  { id:"p2", label:"Drive",      url:"drive.google.com",   pinned:true, memo:"", color:"#34a853" },
+  { id:"p3", label:"Calendar",   url:"calendar.google.com",pinned:true, memo:"", color:"#fbbc04" },
+  { id:"p4", label:"Portal",     url:"lee-work-portal.vercel.app", pinned:true, memo:"", color:"#4285f4" },
+  { id:"p5", label:"Notion",     url:"notion.so",          pinned:true, memo:"", color:"#000" },
+
+  { id:"1", label:"해밀학교 대상 연구 참여자 정보 (2026", url:"docs.google.com",  pinned:false, memo:"해밀학교 연구 대상자 스프레드시트", color:"#4285f4" },
+  { id:"2", label:"vip7612-maker/lee-work-portal",        url:"github.com",       pinned:false, memo:"업무포털 리포지토리",           color:"#24292e" },
+  { id:"3", label:"Create Next App",                      url:"localhost:3000",    pinned:false, memo:"로컬 개발 환경",                color:"#000" },
+  { id:"4", label:"lee-work-portal.vercel.app",            url:"lee-work-portal.vercel.app", pinned:false, memo:"프로덕션 배포 사이트", color:"#000" },
+  { id:"5", label:"사학연금공단 대문페이지",                url:"tp.or.kr",          pinned:false, memo:"사학연금공단 벤치마킹 탭",       color:"#2b2a65" },
 ];
 
-export default function WorkPortal() {
-  const [tabs, setTabs] = useState<Tab[]>(initialTabs);
-  const [activeTabId, setActiveTabId] = useState<string>("5");
-  const [sidebarWidth, setSidebarWidth] = useState(250);
-  const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
+/* ── Component ── */
+export default function Portal() {
+  const [tabs, setTabs]             = useState<Tab[]>(seed);
+  const [activeId, setActiveId]     = useState("5");
+  const [sbWidth, setSbWidth]       = useState(240);
+  const [panelOpen, setPanelOpen]   = useState(true);
+  const dragging = useRef(false);
 
-  const isResizing = useRef(false);
-
+  /* resize logic */
+  const onPointerDown = useCallback(() => { dragging.current = true; }, []);
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing.current) return;
-      let newWidth = e.clientX;
-      if (newWidth < 200) newWidth = 200;
-      if (newWidth > 400) newWidth = 400;
-      setSidebarWidth(newWidth);
+    const move = (e: PointerEvent) => {
+      if (!dragging.current) return;
+      setSbWidth(Math.max(180, Math.min(380, e.clientX)));
     };
-
-    const handleMouseUp = () => {
-      isResizing.current = false;
-      document.body.style.cursor = "default";
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
+    const up = () => { dragging.current = false; };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
   }, []);
 
-  const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
-  const favorites = tabs.filter((t) => t.isFavorite);
-  const regularTabs = tabs.filter((t) => !t.isFavorite);
+  const active   = tabs.find(t => t.id === activeId) ?? tabs[0];
+  const pins     = tabs.filter(t => t.pinned);
+  const items    = tabs.filter(t => !t.pinned);
 
-  const handleAddTab = () => {
-    const newId = Date.now().toString();
-    setTabs([...tabs, { id: newId, title: "New Tab", url: "", isFavorite: false, memo: "", iconType: "file" }]);
-    setActiveTabId(newId);
+  const addTab = () => {
+    const id = Date.now().toString();
+    setTabs(prev => [...prev, { id, label:"New Tab", url:"", pinned:false, memo:"", color: COLORS[prev.length % COLORS.length] }]);
+    setActiveId(id);
   };
-
-  const handleMoveToFavorite = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setTabs(tabs.map(t => t.id === id ? { ...t, isFavorite: true } : t));
-  };
-
-  const handleDelete = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setTabs(tabs.filter(t => t.id !== id));
-  };
-
-  const getSidebarIcon = (type: string) => {
-    // Return simple colors or generic shapes representing icons
-    const colorMap: Record<string, string> = {
-      mail: "#ea4335", drive: "#34a853", calendar: "#fbbc04", portal: "#4285f4", tools: "#8ab4f8",
-      file: "#4285f4", github: "#24292e", next: "#000000", vercel: "#000000", globe: "#9aa0a6"
-    };
-    return (
-      <div style={{ width: 14, height: 14, borderRadius: 3, backgroundColor: colorMap[type] || "#cccccc" }} />
-    );
-  };
-
-  const getFavIcon = (type: string) => {
-    const colorMap: Record<string, string> = {
-      mail: "#ea4335", drive: "#34a853", calendar: "#fbbc04", portal: "#4285f4", tools: "#8ab4f8"
-    };
-    return (
-      <div style={{ width: 20, height: 20, borderRadius: 4, backgroundColor: colorMap[type] || "#cccccc" }} />
-    );
-  };
+  const removeTab = (id: string, e: React.MouseEvent) => { e.stopPropagation(); setTabs(p => p.filter(t => t.id !== id)); };
+  const pinTab    = (id: string, e: React.MouseEvent) => { e.stopPropagation(); setTabs(p => p.map(t => t.id===id ? {...t, pinned:!t.pinned} : t)); };
+  const setMemo   = (v: string) => setTabs(p => p.map(t => t.id===activeId ? {...t, memo:v} : t));
 
   return (
-    <div className="layout-container">
-      {/* 1. Left Sidebar (Dia Style) */}
-      <aside className="sidebar" style={{ width: sidebarWidth }}>
-        <div 
-          className="resizer"
-          onMouseDown={() => {
-            isResizing.current = true;
-            document.body.style.cursor = "col-resize";
-          }}
-        />
-        
-        {/* Mac Controls and Profile */}
-        <div className="mac-controls">
-          <div className="mac-btn mac-close"></div>
-          <div className="mac-btn mac-min"></div>
-          <div className="mac-btn mac-max"></div>
-          <div className="profile-area">
-             <div style={{width: 20, height: 20, borderRadius: '50%', background: '#ccc', display: 'flex', alignItems:'center', justifyContent:'center'}}>
-                <span style={{fontSize: '10px', color: '#333'}}>DL</span>
-             </div>
-             David_Lee
-          </div>
+    <div className={`shell ${panelOpen ? "panel-open" : "panel-closed"}`} style={{ "--sb": `${sbWidth}px` } as React.CSSProperties}>
+
+      {/* ═══ SIDEBAR ═══ */}
+      <div className="sb">
+        <div className="sb__resize" onPointerDown={onPointerDown} />
+
+        {/* traffic lights + user */}
+        <div className="sb__lights">
+          <span className="light light--r" />
+          <span className="light light--y" />
+          <span className="light light--g" />
+          <span className="sb__user">David_Lee</span>
         </div>
 
-        {/* Favorites Grid (4x2 style) */}
-        <div className="favorites-grid">
-          {favorites.map(tab => (
-            <div 
-              key={tab.id} 
-              className={`fav-icon ${activeTabId === tab.id ? "active" : ""}`}
-              onClick={() => setActiveTabId(tab.id)}
-              title={tab.title}
-            >
-              {getFavIcon(tab.iconType)}
+        {/* pinned icons */}
+        <div className="pin-bar">
+          {pins.map(t => (
+            <div key={t.id} className={`pin ${activeId===t.id ? "is-active" : ""}`} onClick={() => setActiveId(t.id)} title={t.label}>
+              <div style={{ width:16, height:16, borderRadius:3, background: t.color }} />
             </div>
           ))}
-          {/* Empty slots to match screenshot grid feel */}
-          <div className="fav-icon" style={{opacity: 0.5}}>+</div>
         </div>
 
-        {/* Regular Tabs List */}
-        <div className="tabs-container">
-          {regularTabs.map((tab, i) => (
-            <div 
-              key={tab.id} 
-              className={`tab-item ${activeTabId === tab.id ? "active" : ""}`}
-              onClick={() => setActiveTabId(tab.id)}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
-                {getSidebarIcon(tab.iconType)}
-                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {tab.title}
-                </span>
-              </div>
-              <div className="tab-actions">
-                <button className="action-btn" title="Add to Favorites" onClick={(e) => handleMoveToFavorite(tab.id, e)}>
-                  <ArrowUp size={12} />
-                </button>
-                <button className="action-btn" title="Close Tab" onClick={(e) => handleDelete(tab.id, e)}>
-                  <X size={12} />
-                </button>
-              </div>
+        {/* tab list */}
+        <div className="tab-list">
+          {items.map(t => (
+            <div key={t.id} className={`tab ${activeId===t.id ? "is-active" : ""}`} onClick={() => setActiveId(t.id)}>
+              <span className="tab__dot" style={{ background: t.color }} />
+              <span className="tab__label">{t.label}</span>
+              <span className="tab__actions">
+                <button className="tab__btn" title="Pin" onClick={e => pinTab(t.id, e)}><ArrowUp size={11}/></button>
+                <button className="tab__btn" title="Close" onClick={e => removeTab(t.id, e)}><X size={11}/></button>
+              </span>
             </div>
           ))}
-          <button className="add-tab-btn" onClick={handleAddTab}>
-             <Plus size={14} /> New Tab
-          </button>
         </div>
-      </aside>
 
-      {/* 2. Main Center View */}
-      <main className="main-view">
-        <header className="browser-top-bar">
-          <div className="nav-buttons">
-            <ChevronLeft size={18} />
-            <ChevronRight size={18} color="#cccccc" />
-            <RotateCw size={16} />
+        <button className="sb__new" onClick={addTab}><Plus size={14}/> New Tab</button>
+      </div>
+
+      {/* ═══ VIEWPORT ═══ */}
+      <div className="vp">
+        <header className="vp__toolbar">
+          <div className="vp__nav">
+            <ChevronLeft size={16}/>
+            <ChevronRight size={16} opacity={.35}/>
+            <RotateCw size={14}/>
           </div>
-          <div className="url-bar">
-            <Lock size={12} />
-            {activeTab?.url.split('/')[0]} <span>/ {activeTab?.url.split('/').slice(1).join('/') || activeTab?.title}</span>
+
+          <div className="vp__url">
+            <Lock size={11}/>
+            <b>{active.url.split("/")[0]}</b>
+            {active.url.includes("/") && <span>/{active.url.split("/").slice(1).join("/")}</span>}
           </div>
-          <div className="ext-buttons">
-            <div style={{width:16,height:16,borderRadius:'50%',background:'linear-gradient(45deg, #f093fb 0%, #f5576c 100%)'}}></div>
-            <div style={{width:16,height:16,borderRadius:'50%',background:'linear-gradient(45deg, #84fab0 0%, #8fd3f4 100%)'}}></div>
-            <LayoutList size={18} color={isRightPanelOpen ? "var(--accent)" : "#86868b"} style={{cursor:'pointer'}} onClick={() => setIsRightPanelOpen(!isRightPanelOpen)} />
+
+          <div className="vp__ext">
+            <PanelRight
+              size={16}
+              color={panelOpen ? "var(--tint)" : undefined}
+              onClick={() => setPanelOpen(v => !v)}
+            />
           </div>
         </header>
 
-        <div className="content-area">
-          {/* MOCKUP CONTENT OF TP.OR.KR IF TAB IS 5 */}
-          {activeTab?.id === "5" ? (
-             <div style={{padding: '40px', fontFamily: 'sans-serif'}}>
-                <div style={{textAlign: 'center', marginBottom: '40px'}}>
-                   <span style={{background: '#2b2a65', color: '#fff', padding: '6px 16px', borderRadius: '20px', fontSize: '0.85rem'}}>대문페이지</span>
-                   <h1 style={{color: '#2b2a65', fontSize: '2rem', marginTop: '20px'}}>교직원과 함께하는 연금·복지 전문기관</h1>
-                   <p style={{color: '#666'}}>안녕하세요, 사립학교교직원연금공단입니다.<br/>원하시는 서비스를 선택하세요.</p>
-                </div>
-                <div style={{display: 'flex', gap: '20px', justifyContent: 'center'}}>
-                   <div style={{border: '1px solid #eee', padding: '24px', borderRadius: '16px', width: '250px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'}}>
-                      <h3>연금 서비스</h3>
-                      <p style={{fontSize: '0.9rem', color: '#666', marginTop:'40px'}}>조회·신청·확인서 발급 등 연금과 관련된 서비스를 이용하세요</p>
-                   </div>
-                   <div style={{border: '1px solid #eee', padding: '24px', borderRadius: '16px', width: '250px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'}}>
-                      <h3>대표 홈페이지</h3>
-                      <p style={{fontSize: '0.9rem', color: '#666', marginTop:'40px'}}>사학연금과 관련된 다양한 정보를 확인하세요</p>
-                   </div>
-                   <div style={{border: '1px solid #eee', padding: '24px', borderRadius: '16px', width: '250px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'}}>
-                      <h3>통합복지 플랫폼</h3>
-                      <p style={{fontSize: '0.9rem', color: '#666', marginTop:'40px'}}>사학연금의 교직원 복지와 맞춤형 서비스를 확인해 보세요</p>
-                   </div>
-                </div>
-             </div>
+        <div className="vp__body">
+          {active.id === "5" ? (
+            /* ── TP.OR.KR mock ── */
+            <div style={{ padding:"48px 40px", maxWidth:860, margin:"0 auto" }}>
+              <div style={{ textAlign:"center", marginBottom:40 }}>
+                <span style={{ background:"#2b2a65", color:"#fff", padding:"5px 14px", borderRadius:14, fontSize:".78rem", fontWeight:600 }}>대문페이지</span>
+                <h1 style={{ color:"#2b2a65", fontSize:"1.6rem", margin:"16px 0 8px", fontWeight:700 }}>교직원과 함께하는 연금·복지 전문기관</h1>
+                <p style={{ color:"#888", fontSize:".92rem" }}>안녕하세요, 사립학교교직원연금공단입니다.<br/>원하시는 서비스를 선택하세요.</p>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16 }}>
+                {[["연금 서비스","조회·신청·확인서 발급 등\n연금과 관련된 서비스를 이용하세요","#3db2a0"],
+                  ["대표 홈페이지","사학연금과 관련된\n다양한 정보를 확인하세요","#5b8dd9"],
+                  ["통합복지 플랫폼","사학연금의 교직원 복지와\n맞춤형 서비스를 확인해 보세요","#c77dba"]
+                ].map(([t,d,c]) => (
+                  <div key={t} style={{ border:"1px solid var(--rule)", borderRadius:12, padding:"28px 20px", position:"relative" }}>
+                    <h3 style={{ fontSize:"1.05rem", fontWeight:700, color:"var(--ink)", marginBottom:6 }}>{t}</h3>
+                    <div style={{ width:48, height:48, borderRadius:"50%", background:`${c}22`, position:"absolute", top:24, right:20 }} />
+                    <p style={{ fontSize:".82rem", color:"var(--ink-3)", whiteSpace:"pre-line", marginTop:28, lineHeight:1.6 }}>{d}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
-            <div style={{padding: '40px', textAlign: 'center', color: '#888'}}>
-              <h1 style={{color: '#333'}}>{activeTab?.title}</h1>
-              <p>{activeTab?.url}</p>
+            <div style={{ padding:"60px 40px", color:"var(--ink-3)" }}>
+              <h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active.label}</h2>
+              <p>{active.url || "빈 탭"}</p>
             </div>
           )}
         </div>
-      </main>
+      </div>
 
-      {/* 3. Right Panel (Chelsea/AI) */}
-      <aside className={`right-panel ${!isRightPanelOpen ? "closed" : ""}`}>
-        <div className="rp-header">
-           <div style={{display:'flex', gap:'12px'}}>
-             <MessageSquare size={16} />
-           </div>
-           <div style={{display:'flex', gap:'12px'}}>
-             <Pin size={16} />
-             <X size={16} style={{cursor:'pointer'}} onClick={() => setIsRightPanelOpen(false)} />
-           </div>
-        </div>
-        
-        <div className="rp-body">
-           <div className="skill-card">
-              <h3><Zap size={16} fill="var(--text-title)" /> Browse Skills</h3>
-              <p>Make complex tasks simple and repeatable.</p>
-           </div>
-           
-           <div className="rp-shortcuts">
-              <span style={{fontWeight: 600}}>Shortcuts for complex tasks</span><br/>
-              <span style={{color: '#b0b0b5'}}>Type / to use a skill</span>
-           </div>
+      {/* ═══ RIGHT PANEL (Chelsea) ═══ */}
+      <div className="rp">
+        <div className="rp__header">
+          <div style={{ display:"flex", gap:10 }}>
+            <MessageSquare size={15}/>
+          </div>
+          <div style={{ display:"flex", gap:10 }}>
+            <Pin size={15}/>
+            <X size={15} onClick={() => setPanelOpen(false)}/>
+          </div>
         </div>
 
-        <div className="rp-footer">
-           <div className="prompt-actions">
-              <button className="prompt-btn"><Search size={12}/> Explain</button>
-              <button className="prompt-btn"><Search size={12}/> Analyze</button>
-              <button className="prompt-btn"><Search size={12}/> Summarize</button>
-           </div>
-           <div className="chat-input-box">
-              <div style={{color: 'var(--accent)', fontWeight: 'bold'}}>tp</div>
-              <input type="text" placeholder="Ask a question about this page..." />
-              <div className="chat-submit"><ArrowUp size={14} /></div>
-           </div>
+        <div className="rp__body">
+          <div className="rp__card">
+            <h3><Zap size={14} fill="var(--ink)"/> Browse Skills</h3>
+            <p>Make complex tasks simple and repeatable.</p>
+          </div>
+
+          <div className="rp__hint">
+            <strong>Shortcuts for complex tasks</strong>
+            Type / to use a skill
+          </div>
         </div>
-      </aside>
+
+        <div className="rp__footer">
+          <div className="rp__chips">
+            <button className="chip"><Search size={10}/> Explain</button>
+            <button className="chip"><Search size={10}/> Analyze</button>
+            <button className="chip"><Search size={10}/> Summarize</button>
+          </div>
+
+          {/* active tab context */}
+          <div style={{ fontSize:".78rem", color:"var(--ink-3)", marginBottom:8, display:"flex", alignItems:"center", gap:4 }}>
+            <div style={{ width:14, height:14, borderRadius:3, background: active.color, display:"inline-block" }} />
+            <b style={{ color:"var(--ink)" }}>{active.label.slice(0,20)}</b>
+          </div>
+          <div className="rp__input">
+            <input placeholder="Ask a question about this page..." />
+            <button className="rp__send"><ArrowUp size={12}/></button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
