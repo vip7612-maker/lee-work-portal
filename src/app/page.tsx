@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   ChevronLeft, ChevronRight, RotateCw, Lock,
-  Plus, X, ArrowUp, Star, Archive,
+  Plus, X, GripVertical,
   Zap, Search, Pin, MessageSquare,
-  PanelRight
+  PanelRight, ArrowUp
 } from "lucide-react";
 
 /* ── Types ── */
@@ -15,7 +15,7 @@ type Tab = {
   url: string;
   pinned: boolean;
   memo: string;
-  color: string;          // dot colour
+  color: string;
 };
 
 const COLORS = ["#ea4335","#34a853","#fbbc04","#4285f4","#ff6d01","#673ab7","#00bcd4","#8bc34a"];
@@ -40,20 +40,122 @@ export default function Portal() {
   const [activeId, setActiveId]     = useState("5");
   const [sbWidth, setSbWidth]       = useState(240);
   const [panelOpen, setPanelOpen]   = useState(true);
-  const dragging = useRef(false);
 
-  /* resize logic */
-  const onPointerDown = useCallback(() => { dragging.current = true; }, []);
+  /* sidebar resize */
+  const resizing = useRef(false);
+  const onPointerDown = useCallback(() => { resizing.current = true; }, []);
   useEffect(() => {
-    const move = (e: PointerEvent) => {
-      if (!dragging.current) return;
-      setSbWidth(Math.max(180, Math.min(380, e.clientX)));
-    };
-    const up = () => { dragging.current = false; };
+    const move = (e: PointerEvent) => { if (!resizing.current) return; setSbWidth(Math.max(180, Math.min(380, e.clientX))); };
+    const up = () => { resizing.current = false; };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
   }, []);
+
+  /* ── Drag & Drop state ── */
+  const dragId = useRef<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [pinDropHover, setPinDropHover] = useState(false);
+
+  const onDragStart = (e: React.DragEvent, id: string) => {
+    dragId.current = id;
+    e.dataTransfer.effectAllowed = "move";
+    // Make the drag image semi-transparent
+    const el = e.currentTarget as HTMLElement;
+    el.style.opacity = "0.4";
+  };
+
+  const onDragEnd = (e: React.DragEvent) => {
+    (e.currentTarget as HTMLElement).style.opacity = "1";
+    dragId.current = null;
+    setDragOverId(null);
+    setPinDropHover(false);
+  };
+
+  /* Reorder within tab list */
+  const onTabDragOver = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverId !== targetId) setDragOverId(targetId);
+  };
+
+  const onTabDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const srcId = dragId.current;
+    if (!srcId || srcId === targetId) return;
+
+    setTabs(prev => {
+      const arr = [...prev];
+      const srcIdx = arr.findIndex(t => t.id === srcId);
+      const tgtIdx = arr.findIndex(t => t.id === targetId);
+      if (srcIdx === -1 || tgtIdx === -1) return prev;
+      const [moved] = arr.splice(srcIdx, 1);
+      arr.splice(tgtIdx, 0, moved);
+      return arr;
+    });
+    setDragOverId(null);
+  };
+
+  /* Drop onto pin bar → make it pinned */
+  const onPinBarDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setPinDropHover(true);
+  };
+
+  const onPinBarDragLeave = () => { setPinDropHover(false); };
+
+  const onPinBarDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const srcId = dragId.current;
+    if (!srcId) return;
+    setTabs(prev => prev.map(t => t.id === srcId ? { ...t, pinned: true } : t));
+    setPinDropHover(false);
+  };
+
+  /* Reorder within pin bar */
+  const onPinDragOver = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverId !== targetId) setDragOverId(targetId);
+  };
+
+  const onPinDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const srcId = dragId.current;
+    if (!srcId || srcId === targetId) return;
+
+    setTabs(prev => {
+      const arr = [...prev];
+      const srcIdx = arr.findIndex(t => t.id === srcId);
+      if (srcIdx === -1) return prev;
+      // If dragging from tab list to pin bar, pin it
+      arr[srcIdx] = { ...arr[srcIdx], pinned: true };
+      const updated = [...arr];
+      const src2 = updated.findIndex(t => t.id === srcId);
+      const tgt2 = updated.findIndex(t => t.id === targetId);
+      const [moved] = updated.splice(src2, 1);
+      updated.splice(tgt2, 0, moved);
+      return updated;
+    });
+    setDragOverId(null);
+    setPinDropHover(false);
+  };
+
+  /* Drop on tab list area → unpin if pinned */
+  const onTabListDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+  const onTabListDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const srcId = dragId.current;
+    if (!srcId) return;
+    const src = tabs.find(t => t.id === srcId);
+    if (src?.pinned) {
+      setTabs(prev => prev.map(t => t.id === srcId ? { ...t, pinned: false } : t));
+    }
+  };
 
   const active   = tabs.find(t => t.id === activeId) ?? tabs[0];
   const pins     = tabs.filter(t => t.pinned);
@@ -65,7 +167,6 @@ export default function Portal() {
     setActiveId(id);
   };
   const removeTab = (id: string, e: React.MouseEvent) => { e.stopPropagation(); setTabs(p => p.filter(t => t.id !== id)); };
-  const pinTab    = (id: string, e: React.MouseEvent) => { e.stopPropagation(); setTabs(p => p.map(t => t.id===id ? {...t, pinned:!t.pinned} : t)); };
   const setMemo   = (v: string) => setTabs(p => p.map(t => t.id===activeId ? {...t, memo:v} : t));
 
   return (
@@ -75,31 +176,61 @@ export default function Portal() {
       <div className="sb">
         <div className="sb__resize" onPointerDown={onPointerDown} />
 
-        {/* traffic lights + user */}
         <div className="sb__lights">
           <span className="light light--r" />
           <span className="light light--y" />
           <span className="light light--g" />
-          <span className="sb__user">David_Lee</span>
+          <span className="sb__user">이경진 업무포털</span>
         </div>
 
-        {/* pinned icons */}
-        <div className="pin-bar">
+        {/* Pinned icons — drop zone */}
+        <div
+          className={`pin-bar ${pinDropHover ? "pin-bar--hover" : ""}`}
+          onDragOver={onPinBarDragOver}
+          onDragLeave={onPinBarDragLeave}
+          onDrop={onPinBarDrop}
+        >
           {pins.map(t => (
-            <div key={t.id} className={`pin ${activeId===t.id ? "is-active" : ""}`} onClick={() => setActiveId(t.id)} title={t.label}>
+            <div
+              key={t.id}
+              className={`pin ${activeId===t.id ? "is-active" : ""} ${dragOverId===t.id ? "pin--drag-over" : ""}`}
+              onClick={() => setActiveId(t.id)}
+              title={t.label}
+              draggable
+              onDragStart={e => onDragStart(e, t.id)}
+              onDragEnd={onDragEnd}
+              onDragOver={e => onPinDragOver(e, t.id)}
+              onDrop={e => onPinDrop(e, t.id)}
+            >
               <div style={{ width:16, height:16, borderRadius:3, background: t.color }} />
             </div>
           ))}
+          {pins.length === 0 && (
+            <div style={{ fontSize:".75rem", color:"var(--ink-3)", padding:"8px 0" }}>여기로 드래그하여 즐겨찾기 추가</div>
+          )}
         </div>
 
-        {/* tab list */}
-        <div className="tab-list">
+        {/* Tab list — drop zone */}
+        <div
+          className="tab-list"
+          onDragOver={onTabListDragOver}
+          onDrop={onTabListDrop}
+        >
           {items.map(t => (
-            <div key={t.id} className={`tab ${activeId===t.id ? "is-active" : ""}`} onClick={() => setActiveId(t.id)}>
+            <div
+              key={t.id}
+              className={`tab ${activeId===t.id ? "is-active" : ""} ${dragOverId===t.id ? "tab--drag-over" : ""}`}
+              onClick={() => setActiveId(t.id)}
+              draggable
+              onDragStart={e => onDragStart(e, t.id)}
+              onDragEnd={onDragEnd}
+              onDragOver={e => onTabDragOver(e, t.id)}
+              onDrop={e => onTabDrop(e, t.id)}
+            >
+              <span className="tab__grip"><GripVertical size={12}/></span>
               <span className="tab__dot" style={{ background: t.color }} />
               <span className="tab__label">{t.label}</span>
               <span className="tab__actions">
-                <button className="tab__btn" title="Pin" onClick={e => pinTab(t.id, e)}><ArrowUp size={11}/></button>
                 <button className="tab__btn" title="Close" onClick={e => removeTab(t.id, e)}><X size={11}/></button>
               </span>
             </div>
@@ -117,25 +248,18 @@ export default function Portal() {
             <ChevronRight size={16} opacity={.35}/>
             <RotateCw size={14}/>
           </div>
-
           <div className="vp__url">
             <Lock size={11}/>
             <b>{active.url.split("/")[0]}</b>
             {active.url.includes("/") && <span>/{active.url.split("/").slice(1).join("/")}</span>}
           </div>
-
           <div className="vp__ext">
-            <PanelRight
-              size={16}
-              color={panelOpen ? "var(--tint)" : undefined}
-              onClick={() => setPanelOpen(v => !v)}
-            />
+            <PanelRight size={16} color={panelOpen ? "var(--tint)" : undefined} onClick={() => setPanelOpen(v => !v)} />
           </div>
         </header>
 
         <div className="vp__body">
           {active.id === "5" ? (
-            /* ── TP.OR.KR mock ── */
             <div style={{ padding:"48px 40px", maxWidth:860, margin:"0 auto" }}>
               <div style={{ textAlign:"center", marginBottom:40 }}>
                 <span style={{ background:"#2b2a65", color:"#fff", padding:"5px 14px", borderRadius:14, fontSize:".78rem", fontWeight:600 }}>대문페이지</span>
@@ -164,38 +288,31 @@ export default function Portal() {
         </div>
       </div>
 
-      {/* ═══ RIGHT PANEL (Chelsea) ═══ */}
+      {/* ═══ RIGHT PANEL ═══ */}
       <div className="rp">
         <div className="rp__header">
-          <div style={{ display:"flex", gap:10 }}>
-            <MessageSquare size={15}/>
-          </div>
+          <div style={{ display:"flex", gap:10 }}><MessageSquare size={15}/></div>
           <div style={{ display:"flex", gap:10 }}>
             <Pin size={15}/>
             <X size={15} onClick={() => setPanelOpen(false)}/>
           </div>
         </div>
-
         <div className="rp__body">
           <div className="rp__card">
             <h3><Zap size={14} fill="var(--ink)"/> Browse Skills</h3>
             <p>Make complex tasks simple and repeatable.</p>
           </div>
-
           <div className="rp__hint">
             <strong>Shortcuts for complex tasks</strong>
             Type / to use a skill
           </div>
         </div>
-
         <div className="rp__footer">
           <div className="rp__chips">
             <button className="chip"><Search size={10}/> Explain</button>
             <button className="chip"><Search size={10}/> Analyze</button>
             <button className="chip"><Search size={10}/> Summarize</button>
           </div>
-
-          {/* active tab context */}
           <div style={{ fontSize:".78rem", color:"var(--ink-3)", marginBottom:8, display:"flex", alignItems:"center", gap:4 }}>
             <div style={{ width:14, height:14, borderRadius:3, background: active.color, display:"inline-block" }} />
             <b style={{ color:"var(--ink)" }}>{active.label.slice(0,20)}</b>
