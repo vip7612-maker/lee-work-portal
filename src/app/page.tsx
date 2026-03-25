@@ -374,7 +374,7 @@ export default function Portal() {
               ))}
               <div className="check-add">
                 <input value={newCheck} onChange={e => setNewCheck(e.target.value)} placeholder="할 일 추가..."
-                  onKeyDown={e => { if (e.key === "Enter") addCheck(); }} />
+                  onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) addCheck(); }} />
                 <button onClick={addCheck}><Plus size={14}/></button>
               </div>
             </div>
@@ -397,7 +397,7 @@ export default function Portal() {
               <div className="link-add">
                 <input value={newLinkLabel} onChange={e => setNewLinkLabel(e.target.value)} placeholder="버튼 이름" />
                 <input value={newLinkUrl} onChange={e => setNewLinkUrl(e.target.value)} placeholder="URL"
-                  onKeyDown={e => { if (e.key === "Enter") addLink(); }} />
+                  onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) addLink(); }} />
                 <button onClick={addLink}><Plus size={14}/></button>
               </div>
             </div>
@@ -427,7 +427,7 @@ export default function Portal() {
           <div className="rp__footer">
             <div className="rp__input">
               <input value={newMemo} onChange={e => setNewMemo(e.target.value)} placeholder="메모를 입력하세요..."
-                onKeyDown={e => { if (e.key === "Enter") addMemo(); }} />
+                onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) addMemo(); }} />
               <button className="rp__send" onClick={addMemo}><ArrowUp size={12}/></button>
             </div>
           </div>
