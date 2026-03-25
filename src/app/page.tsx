@@ -36,6 +36,18 @@ const seed: Tab[] = [
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 
+/* Domains that block iframe embedding (X-Frame-Options / CSP) */
+const BLOCKED_DOMAINS = [
+  'mail.google.com', 'accounts.google.com', 'myaccount.google.com',
+  'meet.google.com', 'chat.google.com', 'contacts.google.com',
+  'play.google.com', 'photos.google.com', 'maps.google.com',
+  'translate.google.com', 'news.google.com',
+  'github.com', 'twitter.com', 'x.com', 'facebook.com', 'instagram.com',
+  'linkedin.com', 'reddit.com', 'amazon.com', 'naver.com', 'daum.net',
+  'kakao.com', 'tistory.com', 'notion.so', 'slack.com',
+  'localhost', 'tp.or.kr',
+];
+
 const api = {
   async fetchJSON(url: string) { const r = await fetch(url); return r.json(); },
   async post(url: string, body: object) { await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }); },
@@ -394,6 +406,20 @@ export default function Portal() {
             const url = currentVpUrl;
             if (!url) return (<div style={{ padding:"60px 40px", color:"var(--ink-3)", textAlign:"center" }}><h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active.label}</h2><p>링크를 설정하려면 우클릭 → 링크 변경</p></div>);
             let embedUrl = url.startsWith("http") ? url : `https://${url}`;
+            const domain = embedUrl.replace(/https?:\/\//, '').split('/')[0].replace('www.','');
+            if (BLOCKED_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))) {
+              return (
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', gap:12, color:'var(--ink-3)' }}>
+                  <Lock size={32} />
+                  <p style={{ fontSize:'.92rem', fontWeight:500, color:'var(--ink)' }}>{active.label}</p>
+                  <p style={{ fontSize:'.82rem' }}>이 사이트는 임베드할 수 없습니다</p>
+                  <a href={embedUrl} target="_blank" rel="noreferrer"
+                    style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 18px', background:'var(--tint)', color:'#fff', borderRadius:6, fontSize:'.82rem', fontWeight:500, textDecoration:'none', marginTop:4 }}>
+                    <ExternalLink size={14}/> 새 탭에서 열기
+                  </a>
+                </div>
+              );
+            }
             if (embedUrl.includes("drive.google.com/drive/folders/")) { const fid = embedUrl.match(/folders\/([^?&#]+)/)?.[1]; if (fid) embedUrl = `https://drive.google.com/embeddedfolderview?id=${fid}#list`; }
             else if (embedUrl.includes("docs.google.com/presentation/d/")) embedUrl = embedUrl.replace(/\/edit.*$/, "/embed?start=false&loop=false&delayms=3000");
             else if (embedUrl.includes("youtube.com/watch")) { const vid = new URL(embedUrl).searchParams.get("v"); if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`; }
