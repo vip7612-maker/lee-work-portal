@@ -48,16 +48,13 @@ html, body { margin:0; padding:0; height:100vh; overflow:hidden;
 }
 .sb__resize:hover { background: var(--tint); opacity: .3; }
 
-/* traffic lights */
-.sb__lights {
-  display: flex; gap: 7px; padding: 14px 14px 6px; align-items: center;
-}
-.light { width: 12px; height: 12px; border-radius: 50%; }
-.light--r { background: #ff5f57; }
-.light--y { background: #febc2e; }
-.light--g { background: #28c840; }
-.sb__user {
-  margin-left: 10px; font-size: .82rem; font-weight: 600; color: var(--ink);
+/* app title */
+.sb__title {
+  padding: 18px 16px 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
 }
 
 /* pin-bar (favorites) */

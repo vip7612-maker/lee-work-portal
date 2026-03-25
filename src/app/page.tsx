@@ -176,12 +176,7 @@ export default function Portal() {
       <div className="sb">
         <div className="sb__resize" onPointerDown={onPointerDown} />
 
-        <div className="sb__lights">
-          <span className="light light--r" />
-          <span className="light light--y" />
-          <span className="light light--g" />
-          <span className="sb__user">이경진 업무포털</span>
-        </div>
+        <div className="sb__title">이경진 업무포털</div>
 
         {/* Pinned icons — drop zone */}
         <div
