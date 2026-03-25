@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Image from "next/image";
 import {
   ChevronLeft, ChevronRight, RotateCw, Lock,
-  Plus, X, GripVertical, ChevronDown, Trash2, RotateCcw,
+  Plus, X, GripVertical, ChevronDown, Archive, RotateCcw,
   Zap, Search, Pin, MessageSquare,
   PanelRight, ArrowUp
 } from "lucide-react";
@@ -334,22 +334,25 @@ export default function Portal() {
           ))}
         </div>
 
-        {/* ── Trash toggle ── */}
+        {/* ── Archived toggle ── */}
         {trash.length > 0 && (
           <div className="trash-section">
             <button className="trash-toggle" onClick={() => setTrashOpen(v => !v)}>
-              <Trash2 size={13}/>
-              <span>삭제된 프로젝트 ({trash.length})</span>
+              <Archive size={13}/>
+              <span>보관된 프로젝트 ({trash.length})</span>
               <ChevronDown size={13} style={{ transform: trashOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s', marginLeft: 'auto' }}/>
             </button>
             {trashOpen && (
               <div className="trash-list">
                 {trash.map(t => (
-                  <div key={t.id} className="trash-item">
+                  <div
+                    key={t.id}
+                    className="trash-item"
+                    onContextMenu={e => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ id: t.id, x: e.clientX, y: e.clientY }); }}
+                  >
                     {getFavicon(t.url, 14) || <span className="tab__dot" style={{ background: t.color }} />}
                     <span className="trash-item__label">{t.label}</span>
                     <button className="tab__btn" title="복원" onClick={() => restoreTab(t.id)}><RotateCcw size={11}/></button>
-                    <button className="tab__btn ctx-danger" title="영구 삭제" onClick={() => permanentDelete(t.id)}><X size={11}/></button>
                   </div>
                 ))}
               </div>
@@ -381,21 +384,36 @@ export default function Portal() {
       </div>
 
       {/* Context menu */}
-      {ctxMenu && (
-        <div
-          className="ctx-menu"
-          style={{ left: ctxMenu.x, top: ctxMenu.y }}
-          onClick={e => e.stopPropagation()}
-        >
-          <button onClick={() => { const t = tabs.find(x => x.id === ctxMenu.id); if (t) startRename(t); setCtxMenu(null); }}>이름 변경</button>
-          <button onClick={() => startUrlEdit(ctxMenu.id)}>링크 변경</button>
-          <button onClick={() => { setTabs(p => p.map(t => t.id === ctxMenu.id ? { ...t, pinned: !t.pinned } : t)); setCtxMenu(null); }}>
-            {tabs.find(t => t.id === ctxMenu.id)?.pinned ? "즐겨찾기 해제" : "즐겨찾기 등록"}
-          </button>
-          <div className="ctx-divider" />
-          <button className="ctx-danger" onClick={() => { softDelete(ctxMenu.id); setCtxMenu(null); }}>삭제</button>
-        </div>
-      )}
+      {ctxMenu && (() => {
+        const isArchived = trash.some(t => t.id === ctxMenu.id);
+        const isActive = tabs.some(t => t.id === ctxMenu.id);
+        return (
+          <div
+            className="ctx-menu"
+            style={{ left: ctxMenu.x, top: ctxMenu.y }}
+            onClick={e => e.stopPropagation()}
+          >
+            {isActive && (
+              <>
+                <button onClick={() => { const t = tabs.find(x => x.id === ctxMenu.id); if (t) startRename(t); setCtxMenu(null); }}>이름 변경</button>
+                <button onClick={() => startUrlEdit(ctxMenu.id)}>링크 변경</button>
+                <button onClick={() => { setTabs(p => p.map(t => t.id === ctxMenu.id ? { ...t, pinned: !t.pinned } : t)); setCtxMenu(null); }}>
+                  {tabs.find(t => t.id === ctxMenu.id)?.pinned ? "즐겨찾기 해제" : "즐겨찾기 등록"}
+                </button>
+                <div className="ctx-divider" />
+                <button onClick={() => { softDelete(ctxMenu.id); setCtxMenu(null); }}>보관</button>
+              </>
+            )}
+            {isArchived && (
+              <>
+                <button onClick={() => { restoreTab(ctxMenu.id); setCtxMenu(null); }}>복원</button>
+                <div className="ctx-divider" />
+                <button className="ctx-danger" onClick={() => { permanentDelete(ctxMenu.id); setCtxMenu(null); }}>완전 삭제</button>
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ═══ VIEWPORT ═══ */}
       <div className="vp">
