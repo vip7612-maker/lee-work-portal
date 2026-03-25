@@ -41,6 +41,55 @@ export default function Portal() {
   const [sbWidth, setSbWidth]       = useState(240);
   const [panelOpen, setPanelOpen]   = useState(true);
 
+  /* ── Inline rename (double-click) ── */
+  const [editingId, setEditingId]   = useState<string | null>(null);
+  const [editVal, setEditVal]       = useState("");
+  const editRef = useRef<HTMLInputElement>(null);
+
+  const startRename = (t: Tab) => {
+    setEditingId(t.id);
+    setEditVal(t.label);
+    setTimeout(() => editRef.current?.focus(), 0);
+  };
+  const commitRename = () => {
+    if (editingId && editVal.trim()) {
+      setTabs(p => p.map(t => t.id === editingId ? { ...t, label: editVal.trim() } : t));
+    }
+    setEditingId(null);
+  };
+
+  /* ── Right-click context menu ── */
+  const [ctxMenu, setCtxMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [urlEditId, setUrlEditId]   = useState<string | null>(null);
+  const [urlEditVal, setUrlEditVal] = useState("");
+  const urlRef = useRef<HTMLInputElement>(null);
+
+  const openCtx = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCtxMenu({ id, x: e.clientX, y: e.clientY });
+  };
+  const startUrlEdit = (id: string) => {
+    const t = tabs.find(x => x.id === id);
+    setUrlEditId(id);
+    setUrlEditVal(t?.url || "");
+    setCtxMenu(null);
+    setTimeout(() => urlRef.current?.focus(), 0);
+  };
+  const commitUrl = () => {
+    if (urlEditId) {
+      setTabs(p => p.map(t => t.id === urlEditId ? { ...t, url: urlEditVal.trim() } : t));
+    }
+    setUrlEditId(null);
+  };
+
+  /* Close menus on outside click */
+  useEffect(() => {
+    const handler = () => { setCtxMenu(null); };
+    window.addEventListener("click", handler);
+    return () => window.removeEventListener("click", handler);
+  }, []);
+
   /* sidebar resize */
   const resizing = useRef(false);
   const onPointerDown = useCallback(() => { resizing.current = true; }, []);
@@ -216,7 +265,9 @@ export default function Portal() {
               key={t.id}
               className={`tab ${activeId===t.id ? "is-active" : ""} ${dragOverId===t.id ? "tab--drag-over" : ""}`}
               onClick={() => setActiveId(t.id)}
-              draggable
+              onDoubleClick={() => startRename(t)}
+              onContextMenu={e => openCtx(e, t.id)}
+              draggable={editingId !== t.id}
               onDragStart={e => onDragStart(e, t.id)}
               onDragEnd={onDragEnd}
               onDragOver={e => onTabDragOver(e, t.id)}
@@ -224,7 +275,19 @@ export default function Portal() {
             >
               <span className="tab__grip"><GripVertical size={12}/></span>
               <span className="tab__dot" style={{ background: t.color }} />
-              <span className="tab__label">{t.label}</span>
+              {editingId === t.id ? (
+                <input
+                  ref={editRef}
+                  className="tab__edit"
+                  value={editVal}
+                  onChange={e => setEditVal(e.target.value)}
+                  onBlur={commitRename}
+                  onKeyDown={e => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") setEditingId(null); }}
+                  onClick={e => e.stopPropagation()}
+                />
+              ) : (
+                <span className="tab__label">{t.label}</span>
+              )}
               <span className="tab__actions">
                 <button className="tab__btn" title="Close" onClick={e => removeTab(t.id, e)}><X size={11}/></button>
               </span>
@@ -233,7 +296,44 @@ export default function Portal() {
         </div>
 
         <button className="sb__new" onClick={addTab}><Plus size={14}/> New Tab</button>
+
+        {/* URL edit overlay */}
+        {urlEditId && (
+          <div className="url-edit-overlay" onClick={e => e.stopPropagation()}>
+            <div className="url-edit-box">
+              <label>링크(URL) 변경</label>
+              <input
+                ref={urlRef}
+                value={urlEditVal}
+                onChange={e => setUrlEditVal(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") commitUrl(); if (e.key === "Escape") setUrlEditId(null); }}
+                placeholder="https://example.com"
+              />
+              <div className="url-edit-btns">
+                <button onClick={() => setUrlEditId(null)}>취소</button>
+                <button className="url-edit-save" onClick={commitUrl}>저장</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Context menu */}
+      {ctxMenu && (
+        <div
+          className="ctx-menu"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button onClick={() => { const t = tabs.find(x => x.id === ctxMenu.id); if (t) startRename(t); setCtxMenu(null); }}>이름 변경</button>
+          <button onClick={() => startUrlEdit(ctxMenu.id)}>링크 변경</button>
+          <button onClick={() => { setTabs(p => p.map(t => t.id === ctxMenu.id ? { ...t, pinned: !t.pinned } : t)); setCtxMenu(null); }}>
+            {tabs.find(t => t.id === ctxMenu.id)?.pinned ? "즐겨찾기 해제" : "즐겨찾기 등록"}
+          </button>
+          <div className="ctx-divider" />
+          <button className="ctx-danger" onClick={() => { setTabs(p => p.filter(t => t.id !== ctxMenu.id)); setCtxMenu(null); }}>삭제</button>
+        </div>
+      )}
 
       {/* ═══ VIEWPORT ═══ */}
       <div className="vp">

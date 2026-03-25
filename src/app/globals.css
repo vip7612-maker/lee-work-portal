@@ -229,3 +229,74 @@ html, body { margin:0; padding:0; height:100vh; overflow:hidden;
 /* scrollbar */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+
+/* ── Inline tab rename ── */
+.tab__edit {
+  flex: 1; min-width: 0;
+  background: var(--surface); border: 1px solid var(--tint);
+  border-radius: 3px; padding: 1px 4px;
+  font: inherit; font-size: .82rem; font-weight: 500;
+  color: var(--ink); outline: none;
+}
+
+/* ── Context menu ── */
+.ctx-menu {
+  position: fixed; z-index: 999;
+  background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 8px; padding: 4px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.12);
+  min-width: 160px;
+  animation: ctxIn .12s ease;
+}
+@keyframes ctxIn { from { opacity:0; transform: scale(.96); } to { opacity:1; transform: scale(1); } }
+
+.ctx-menu button {
+  display: block; width: 100%;
+  background: none; border: none;
+  padding: 7px 12px; text-align: left;
+  font-size: .82rem; font-weight: 500;
+  color: var(--ink-2); border-radius: 5px;
+  cursor: pointer;
+}
+.ctx-menu button:hover { background: rgba(0,0,0,.05); }
+.ctx-danger { color: #ff3b30 !important; }
+.ctx-danger:hover { background: rgba(255,59,48,.08) !important; }
+.ctx-divider { height: 1px; background: var(--rule); margin: 4px 0; }
+
+/* ── URL edit overlay ── */
+.url-edit-overlay {
+  position: absolute; inset: 0; z-index: 50;
+  background: rgba(0,0,0,.25);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+}
+.url-edit-box {
+  background: var(--surface); border-radius: 10px;
+  padding: 20px; width: 280px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.15);
+}
+.url-edit-box label {
+  display: block; font-size: .82rem; font-weight: 600;
+  color: var(--ink); margin-bottom: 8px;
+}
+.url-edit-box input {
+  width: 100%; padding: 7px 10px;
+  border: 1px solid var(--rule); border-radius: 6px;
+  font: inherit; font-size: .85rem; color: var(--ink);
+  outline: none; background: var(--surface-dim);
+}
+.url-edit-box input:focus { border-color: var(--tint); }
+.url-edit-btns {
+  display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px;
+}
+.url-edit-btns button {
+  padding: 5px 14px; border-radius: 6px; border: 1px solid var(--rule);
+  background: var(--surface); font-size: .8rem; font-weight: 500;
+  cursor: pointer; color: var(--ink-2);
+}
+.url-edit-btns button:hover { background: var(--surface-dim); }
+.url-edit-save {
+  background: var(--tint) !important; color: #fff !important;
+  border-color: var(--tint) !important;
+}
+.url-edit-save:hover { opacity: .9; }
