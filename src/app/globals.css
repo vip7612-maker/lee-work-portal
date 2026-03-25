@@ -140,7 +140,6 @@ html, body { margin:0; padding:0; height:100vh; overflow:hidden;
 /* viewport tab bar */
 .vp__tabbar {
   display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid var(--rule);
   background: var(--surface-dim);
   padding: 0 8px;
   min-height: 36px;
