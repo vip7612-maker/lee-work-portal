@@ -335,12 +335,10 @@ export default function Portal() {
             if (!url) return (<div style={{ padding:"60px 40px", color:"var(--ink-3)", textAlign:"center" }}><h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active.label}</h2><p>링크를 설정하려면 우클릭 → 링크 변경</p></div>);
             let embedUrl = url.startsWith("http") ? url : `https://${url}`;
             if (embedUrl.includes("drive.google.com/drive/folders/")) { const fid = embedUrl.match(/folders\/([^?&#]+)/)?.[1]; if (fid) embedUrl = `https://drive.google.com/embeddedfolderview?id=${fid}#list`; }
-            else if (embedUrl.includes("docs.google.com/document/d/")) embedUrl = embedUrl.replace(/\/edit.*$/, "/preview");
-            else if (embedUrl.includes("docs.google.com/spreadsheets/d/")) embedUrl = embedUrl.replace(/\/edit.*$/, "/preview");
             else if (embedUrl.includes("docs.google.com/presentation/d/")) embedUrl = embedUrl.replace(/\/edit.*$/, "/embed?start=false&loop=false&delayms=3000");
             else if (embedUrl.includes("youtube.com/watch")) { const vid = new URL(embedUrl).searchParams.get("v"); if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`; }
             else if (embedUrl.includes("youtu.be/")) { const vid = embedUrl.split("youtu.be/")[1]?.split(/[?#]/)[0]; if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`; }
-            return <iframe src={embedUrl} style={{ width:"100%", height:"100%", border:"none" }} allow="autoplay; encrypted-media" allowFullScreen sandbox="allow-same-origin allow-scripts allow-popups allow-forms" />;
+            return <iframe src={embedUrl} style={{ width:"100%", height:"100%", border:"none" }} allow="autoplay; encrypted-media" allowFullScreen />;
           })()}
         </div>
       </div>
