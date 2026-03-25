@@ -194,7 +194,7 @@ html, body { margin:0; padding:0; height:100vh; overflow:hidden;
 /* toolbar */
 .vp__toolbar {
   display: flex; align-items: center; gap: 12px;
-  padding: 10px 16px;
+  padding: 10px 16px 12px;
   border-bottom: 1px solid var(--rule);
 }
 .vp__nav { display: flex; gap: 10px; color: var(--ink-3); }
