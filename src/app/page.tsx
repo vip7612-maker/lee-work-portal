@@ -254,7 +254,7 @@ export default function Portal() {
 
   const currentVpUrl = (() => {
     if (activeVpTabId) { const vt = vpTabs.find(t => t.id === activeVpTabId); if (vt) return vt.url; }
-    return active.url;
+    return active?.url || '';
   })();
 
   if (!active) return <div className="login-screen"><p style={{ color:"var(--ink-3)" }}>프로젝트를 불러오는 중...</p></div>;
