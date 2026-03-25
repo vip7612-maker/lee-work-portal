@@ -201,9 +201,23 @@ export default function Portal() {
   const pins   = tabs.filter(t => t.pinned);
   const items  = tabs.filter(t => !t.pinned);
 
+  const FAVICON_MAP: Record<string, string> = {
+    'mail.google.com':     'https://ssl.gstatic.com/ui/v1/icons/mail/rfr/gmail.ico',
+    'calendar.google.com': 'https://calendar.google.com/googlecalendar/images/favicons_2020q4/calendar_31.ico',
+    'drive.google.com':    'https://ssl.gstatic.com/images/branding/product/1x/drive_2020q4_32dp.png',
+    'docs.google.com':     'https://ssl.gstatic.com/docs/documents/images/kix-favicon7.ico',
+    'meet.google.com':     'https://fonts.gstatic.com/s/i/productlogos/meet_2020q4/v1/web-32dp/logo_meet_2020q4_color_1x_web_32dp.png',
+    'chat.google.com':     'https://ssl.gstatic.com/ui/v1/icons/mail/rfr/chat_1.ico',
+    'photos.google.com':   'https://ssl.gstatic.com/social/photosui/images/favicon/photos_2022.ico',
+    'notion.so':           'https://www.notion.so/images/favicon.ico',
+    'github.com':          'https://github.githubassets.com/favicons/favicon-dark.svg',
+  };
+
   const getFavicon = (url: string, size: number) => {
     if (!url) return null;
-    const domain = url.split("/")[0];
+    const domain = url.replace(/https?:\/\//, '').split("/")[0].replace('www.', '');
+    const knownIcon = FAVICON_MAP[domain];
+    if (knownIcon) return <img src={knownIcon} alt="" width={size} height={size} style={{ borderRadius: size > 16 ? 4 : 2 }} draggable={false} />;
     return <img src={`https://www.google.com/s2/favicons?domain=${domain}&sz=${size * 2}`} alt="" width={size} height={size} style={{ borderRadius: size > 16 ? 4 : 2 }} draggable={false} />;
   };
 
