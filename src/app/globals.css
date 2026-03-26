@@ -134,12 +134,11 @@ html, body { margin:0; padding:0; height:100vh; overflow:hidden;
   padding: 10px 16px; font-size: .82rem; font-weight: 500;
   color: var(--ink-3); cursor: pointer;
   background: none; border: none; width: 100%;
-  margin-top: auto;
 }
 .sb__new:hover { color: var(--ink); }
 .sb__appstore {
   background: linear-gradient(135deg, #8B5CF6, #6366F1) !important;
-  color: white !important; margin-top: auto !important;
+  color: white !important;
   border-radius: 6px !important; margin-bottom: 0 !important;
 }
 .sb__appstore:hover { opacity: .9; color: white !important; }
