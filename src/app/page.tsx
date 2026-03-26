@@ -442,6 +442,19 @@ export default function Portal() {
             if (!url) return (<div style={{ padding:"60px 40px", color:"var(--ink-3)", textAlign:"center" }}><h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active?.label || '대시보드'}</h2><p>링크를 설정하려면 우클릭 → 링크 변경</p></div>);
             let embedUrl = url.startsWith("http") ? url : `https://${url}`;
             const domain = embedUrl.replace(/https?:\/\//, '').split('/')[0].replace('www.','');
+            /* Block same-origin (recursive iframe) */
+            if (typeof window !== 'undefined' && embedUrl.includes(window.location.hostname)) {
+              return (
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', gap:12, color:'var(--ink-3)' }}>
+                  <ExternalLink size={32} />
+                  <p style={{ fontSize:'.92rem', fontWeight:500, color:'var(--ink)' }}>{active?.label || ''}</p>
+                  <a href={embedUrl} target="_blank" rel="noreferrer"
+                    style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 18px', background:'var(--tint)', color:'#fff', borderRadius:6, fontSize:'.82rem', fontWeight:500, textDecoration:'none' }}>
+                    <ExternalLink size={14}/> 새 탭에서 열기
+                  </a>
+                </div>
+              );
+            }
             if (BLOCKED_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))) {
               return (
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', gap:12, color:'var(--ink-3)' }}>
