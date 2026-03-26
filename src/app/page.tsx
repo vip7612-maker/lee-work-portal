@@ -5,7 +5,7 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import {
   ChevronLeft, ChevronRight, RotateCw, Lock,
   Plus, X, ChevronDown, Archive, RotateCcw,
-  MessageSquare, PanelRight, ArrowUp,
+  MessageSquare, PanelRight, PanelLeftClose, ArrowUp,
   CheckSquare, Square, Link2, ExternalLink, Trash2
 } from "lucide-react";
 
@@ -63,6 +63,7 @@ export default function Portal() {
   const [tabs, setTabs]             = useState<Tab[]>([]);
   const [activeId, setActiveId]     = useState("");
   const [sbWidth, setSbWidth]       = useState(240);
+  const [sbOpen, setSbOpen]         = useState(true);
   const [panelOpen, setPanelOpen]   = useState(true);
   const [trash, setTrash]           = useState<Tab[]>([]);
   const [trashOpen, setTrashOpen]   = useState(false);
@@ -260,7 +261,7 @@ export default function Portal() {
   if (!active) return <div className="login-screen"><p style={{ color:"var(--ink-3)" }}>프로젝트를 불러오는 중...</p></div>;
 
   return (
-    <div className={`shell ${panelOpen ? "panel-open" : "panel-closed"}`} style={{ "--sb": `${sbWidth}px` } as React.CSSProperties}>
+    <div className={`shell ${panelOpen ? "panel-open" : "panel-closed"} ${sbOpen ? '' : 'sb-closed'}`} style={{ "--sb": `${sbWidth}px` } as React.CSSProperties}>
 
       {/* ═══ SIDEBAR ═══ */}
       <div className="sb">
@@ -376,6 +377,9 @@ export default function Portal() {
         {/* Tab bar (area 1) */}
         <div className="vp__tabbar">
           <div className="vp__tabbar-list">
+            <button className="vp__sb-toggle" onClick={() => setSbOpen(v => !v)} title={sbOpen ? '사이드바 접기' : '사이드바 펼치기'}>
+              <PanelLeftClose size={16} style={{ transform: sbOpen ? 'none' : 'scaleX(-1)', transition: 'transform .2s' }} />
+            </button>
             <button className={`vp__tab ${!activeVpTabId ? 'is-active' : ''}`}
               onClick={() => setActiveVpTabId(null)}>
               {active.label}

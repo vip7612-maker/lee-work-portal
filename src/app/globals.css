@@ -32,6 +32,10 @@ html, body { margin:0; padding:0; height:100vh; overflow:hidden;
 }
 .shell.panel-open  { grid-template-columns: var(--sb) 1fr 320px; }
 .shell.panel-closed { grid-template-columns: var(--sb) 1fr 0px; }
+.shell.sb-closed.panel-open  { grid-template-columns: 0px 1fr 320px; }
+.shell.sb-closed.panel-closed { grid-template-columns: 0px 1fr 0px; }
+.shell { transition: grid-template-columns .25s ease; }
+.shell.sb-closed .sb { overflow: hidden; width: 0; opacity: 0; pointer-events: none; }
 
 /* ── Col 1 : Sidebar ── */
 .sb {
@@ -173,6 +177,12 @@ html, body { margin:0; padding:0; height:100vh; overflow:hidden;
   display: flex; align-items: center;
 }
 .vp__tab-add:hover { background: rgba(0,0,0,.05); color: var(--ink); }
+.vp__sb-toggle {
+  border: none; background: none; cursor: pointer;
+  color: var(--ink-3); padding: 4px 6px; border-radius: 4px;
+  display: flex; align-items: center; margin-right: 4px;
+}
+.vp__sb-toggle:hover { background: rgba(0,0,0,.05); color: var(--ink); }
 
 /* viewport add-tab form */
 .vp__tab-form {
