@@ -131,6 +131,12 @@ html, body { margin:0; padding:0; height:100vh; overflow:hidden;
   margin-top: auto;
 }
 .sb__new:hover { color: var(--ink); }
+.sb__appstore {
+  background: linear-gradient(135deg, #8B5CF6, #6366F1) !important;
+  color: white !important; margin-top: auto !important;
+  border-radius: 6px !important; margin-bottom: 0 !important;
+}
+.sb__appstore:hover { opacity: .9; color: white !important; }
 
 /* ── Col 2 : Viewport ── */
 .vp {

@@ -330,6 +330,17 @@ export default function Portal() {
           </div>
         )}
 
+        <button className="sb__new sb__appstore" onClick={() => {
+          const appStoreTab = tabs.find(t => t.label === 'App Store');
+          if (appStoreTab) { setActiveId(appStoreTab.id); }
+          else {
+            const id = uid();
+            const newTab: Tab = { id, label: 'App Store', url: `${window.location.origin}/app-store`, pinned: false, memo: '', color: '#8B5CF6' };
+            setTabs(prev => [...prev, newTab]);
+            setActiveId(id);
+            api.post('/api/projects', { ...newTab, pinned: 0, sort_order: tabs.length, archived: 0 });
+          }
+        }}>🚀 App Store</button>
         <button className="sb__new" onClick={addTab}><Plus size={14}/> NEW 프로젝트</button>
 
         {/* URL edit overlay */}
