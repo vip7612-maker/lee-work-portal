@@ -441,7 +441,7 @@ export default function Portal() {
         {/* Iframe (area 2) */}
         <div className="vp__body">
           {(isDashboard || isAppStore) && !activeVpTabId ? (isDashboard ? <Dashboard /> : <AppStorePage />) : (() => {
-            const url = currentVpUrl;
+            const url = currentVpUrl?.replace(/\s+/g, '');
             if (!url) return (<div style={{ padding:"60px 40px", color:"var(--ink-3)", textAlign:"center" }}><h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active?.label || '대시보드'}</h2><p>링크를 설정하려면 우클릭 → 링크 변경</p></div>);
             let embedUrl = url.startsWith("http") ? url : `https://${url}`;
             const domain = embedUrl.replace(/https?:\/\//, '').split('/')[0].replace('www.','');
