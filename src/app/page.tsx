@@ -120,7 +120,10 @@ export default function Portal() {
         }
         setTabs(activeList);
         setTrash(archivedList);
-        if (activeList.length) setActiveId(activeList[0].id);
+        if (activeList.length) {
+          const firstNonPinned = activeList.find(t => !t.pinned);
+          setActiveId(firstNonPinned ? firstNonPinned.id : activeList[0].id);
+        }
       } else {
         seed.forEach((t, i) => {
           api.post('/api/projects', { id: t.id, label: t.label, url: t.url, pinned: t.pinned ? 1 : 0, color: t.color, sort_order: i, archived: 0 });
@@ -275,7 +278,7 @@ export default function Portal() {
         <div className={`pin-bar ${pinDropHover ? "pin-bar--hover" : ""}`} onDragOver={onPinBarDragOver} onDragLeave={onPinBarDragLeave} onDrop={onPinBarDrop}>
           {pins.map(t => (
             <div key={t.id} className={`pin ${activeId===t.id ? "is-active" : ""} ${dragOverId===t.id ? "pin--drag-over" : ""}`}
-              onClick={() => setActiveId(t.id)} title={t.label} draggable
+              onClick={() => { setActiveId(t.id); setActiveVpTabId(null); }} title={t.label} draggable
               onDragStart={e => onDragStart(e, t.id)} onDragEnd={onDragEnd}
               onDragOver={e => onPinDragOver(e, t.id)} onDrop={e => onPinDrop(e, t.id)}
               onContextMenu={e => openCtx(e, t.id)}
@@ -290,7 +293,7 @@ export default function Portal() {
         <div className="tab-list" onDragOver={onTabListDragOver} onDrop={onTabListDrop}>
           {items.map(t => (
             <div key={t.id} className={`tab ${activeId===t.id ? "is-active" : ""} ${dragOverId===t.id ? "tab--drag-over" : ""}`}
-              onClick={() => setActiveId(t.id)} onDoubleClick={() => startRename(t)}
+              onClick={() => { setActiveId(t.id); setActiveVpTabId(null); }} onDoubleClick={() => startRename(t)}
               onContextMenu={e => openCtx(e, t.id)} draggable={editingId !== t.id}
               onDragStart={e => onDragStart(e, t.id)} onDragEnd={onDragEnd}
               onDragOver={e => onTabDragOver(e, t.id)} onDrop={e => onTabDrop(e, t.id)}
