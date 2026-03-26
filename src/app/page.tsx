@@ -6,7 +6,7 @@ import {
   ChevronLeft, ChevronRight, RotateCw, Lock,
   Plus, X, ChevronDown, Archive, RotateCcw,
   MessageSquare, PanelRight, PanelLeftClose, ArrowUp,
-  CheckSquare, Square, Link2, ExternalLink, Trash2
+  CheckSquare, Square, Link2, ExternalLink, Trash2, Home
 } from "lucide-react";
 
 /* ── Types ── */
@@ -20,6 +20,7 @@ type Comment   = { id: string; project_id: string; text: string; created_at: str
 type VpTab     = { id: string; project_id: string; name: string; url: string; sort_order: number };
 
 const COLORS = ["#ea4335","#34a853","#fbbc04","#4285f4","#ff6d01","#673ab7","#00bcd4","#8bc34a"];
+const DASHBOARD_ID = "__dashboard__";
 
 const seed: Tab[] = [
   { id:"p1", label:"Gmail",      url:"mail.google.com",    pinned:true, memo:"", color:"#ea4335" },
@@ -61,7 +62,7 @@ export default function Portal() {
   const { data: session, status } = useSession();
 
   const [tabs, setTabs]             = useState<Tab[]>([]);
-  const [activeId, setActiveId]     = useState("");
+  const [activeId, setActiveId]     = useState(DASHBOARD_ID);
   const [sbWidth, setSbWidth]       = useState(240);
   const [sbOpen, setSbOpen]         = useState(true);
   const [panelOpen, setPanelOpen]   = useState(true);
@@ -121,8 +122,7 @@ export default function Portal() {
         setTabs(activeList);
         setTrash(archivedList);
         if (activeList.length) {
-          const firstNonPinned = activeList.find(t => !t.pinned);
-          setActiveId(firstNonPinned ? firstNonPinned.id : activeList[0].id);
+          setActiveId(DASHBOARD_ID);
         }
       } else {
         seed.forEach((t, i) => {
@@ -256,12 +256,14 @@ export default function Portal() {
     api.del('/api/viewport-tabs', { id });
   };
 
+  const isDashboard = activeId === DASHBOARD_ID;
   const currentVpUrl = (() => {
+    if (isDashboard) return `${typeof window !== 'undefined' ? window.location.origin : ''}/dashboard`;
     if (activeVpTabId) { const vt = vpTabs.find(t => t.id === activeVpTabId); if (vt) return vt.url; }
     return active?.url || '';
   })();
 
-  if (!active) return <div className="login-screen"><p style={{ color:"var(--ink-3)" }}>프로젝트를 불러오는 중...</p></div>;
+  if (!active && !isDashboard) return <div className="login-screen"><p style={{ color:"var(--ink-3)" }}>프로젝트를 불러오는 중...</p></div>;
 
   return (
     <div className={`shell ${panelOpen ? "panel-open" : "panel-closed"} ${sbOpen ? '' : 'sb-closed'}`} style={{ "--sb": `${sbWidth}px` } as React.CSSProperties}>
@@ -270,6 +272,9 @@ export default function Portal() {
       <div className="sb">
         <div className="sb__resize" onPointerDown={onPointerDown} />
         <div className="sb__title">
+          <button className="sb__home" onClick={() => { setActiveId(DASHBOARD_ID); setActiveVpTabId(null); }} title="홈 대시보드">
+            <Home size={18}/>
+          </button>
           <span>이경진 업무포털</span>
           <button className="sb__signout" onClick={() => signOut()}>로그아웃</button>
         </div>
@@ -368,7 +373,7 @@ export default function Portal() {
         const isActive = tabs.some(t => t.id === ctxMenu.id);
         return (
           <div className="ctx-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }} onClick={e => e.stopPropagation()}>
-            {isActive && (<>
+            {isActive && ctxMenu.id !== DASHBOARD_ID && (<>
               <button onClick={() => { const t = tabs.find(x => x.id === ctxMenu.id); if (t) startRename(t); setCtxMenu(null); }}>이름 변경</button>
               <button onClick={() => startUrlEdit(ctxMenu.id)}>링크 변경</button>
               <button onClick={() => { setTabs(p => p.map(t => t.id === ctxMenu.id ? { ...t, pinned: !t.pinned } : t)); const t = tabs.find(x => x.id === ctxMenu.id); if (t) api.put('/api/projects', { id: t.id, pinned: t.pinned ? 0 : 1 }); setCtxMenu(null); }}>
@@ -396,7 +401,7 @@ export default function Portal() {
             </button>
             <button className={`vp__tab ${!activeVpTabId ? 'is-active' : ''}`}
               onClick={() => setActiveVpTabId(null)}>
-              {active.label}
+              {isDashboard ? '📊 대시보드' : active?.label}
             </button>
             {vpTabs.map(vt => (
               <button key={vt.id} className={`vp__tab ${activeVpTabId===vt.id ? 'is-active' : ''}`}
@@ -438,14 +443,14 @@ export default function Portal() {
         <div className="vp__body">
           {(() => {
             const url = currentVpUrl;
-            if (!url) return (<div style={{ padding:"60px 40px", color:"var(--ink-3)", textAlign:"center" }}><h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active.label}</h2><p>링크를 설정하려면 우클릭 → 링크 변경</p></div>);
+            if (!url) return (<div style={{ padding:"60px 40px", color:"var(--ink-3)", textAlign:"center" }}><h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active?.label || '대시보드'}</h2><p>링크를 설정하려면 우클릭 → 링크 변경</p></div>);
             let embedUrl = url.startsWith("http") ? url : `https://${url}`;
             const domain = embedUrl.replace(/https?:\/\//, '').split('/')[0].replace('www.','');
             if (BLOCKED_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))) {
               return (
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', gap:12, color:'var(--ink-3)' }}>
                   <Lock size={32} />
-                  <p style={{ fontSize:'.92rem', fontWeight:500, color:'var(--ink)' }}>{active.label}</p>
+                  <p style={{ fontSize:'.92rem', fontWeight:500, color:'var(--ink)' }}>{active?.label || '대시보드'}</p>
                   <p style={{ fontSize:'.82rem' }}>이 사이트는 임베드할 수 없습니다</p>
                   <a href={embedUrl} target="_blank" rel="noreferrer"
                     style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'8px 18px', background:'var(--tint)', color:'#fff', borderRadius:6, fontSize:'.82rem', fontWeight:500, textDecoration:'none', marginTop:4 }}>
@@ -478,7 +483,7 @@ export default function Portal() {
         <div className="rp__body">
           {rpTab === 'checklist' && (
             <div className="rp-section">
-              <div className="rp-section__title">{active.label} 체크리스트</div>
+              <div className="rp-section__title">{active?.label} 체크리스트</div>
               {checks.length === 0 && <p className="rp-empty">아직 항목이 없습니다</p>}
               {checks.map(c => (
                 <div key={c.id} className={`check-item ${c.checked ? 'is-done' : ''}`}>
@@ -499,7 +504,7 @@ export default function Portal() {
 
           {rpTab === 'links' && (
             <div className="rp-section">
-              <div className="rp-section__title">{active.label} 바로가기</div>
+              <div className="rp-section__title">{active?.label} 바로가기</div>
               {links.length === 0 && <p className="rp-empty">링크 버튼을 추가하세요</p>}
               {links.map(l => (
                 <div key={l.id} className="link-card">
@@ -522,7 +527,7 @@ export default function Portal() {
 
           {rpTab === 'memos' && (
             <div className="rp-section rp-section--memos">
-              <div className="rp-section__title">{active.label} 메모</div>
+              <div className="rp-section__title">{active?.label} 메모</div>
               <div className="memo-thread">
                 {memos.length === 0 && <p className="rp-empty">메모를 남겨보세요</p>}
                 {memos.map(m => (

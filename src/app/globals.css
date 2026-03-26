@@ -54,15 +54,21 @@ html, body { margin:0; padding:0; height:100vh; overflow:hidden;
 
 /* app title */
 .sb__title {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; gap: 8px;
   padding: 14px 16px 10px;
   font-size: 1.04rem; font-weight: 700; color: var(--ink);
   letter-spacing: -0.02em;
 }
+.sb__home {
+  background: none; border: none; cursor: pointer;
+  color: var(--ink-3); padding: 4px; border-radius: 6px;
+  display: flex; align-items: center; transition: all .15s;
+}
+.sb__home:hover { background: rgba(0,0,0,.06); color: var(--ink); }
 .sb__signout {
   background: none; border: none; cursor: pointer;
   font-size: .7rem; color: var(--ink-3); font-weight: 500;
-  padding: 3px 8px; border-radius: 4px;
+  padding: 3px 8px; border-radius: 4px; margin-left: auto;
 }
 .sb__signout:hover { background: rgba(0,0,0,.05); }
 
