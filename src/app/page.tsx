@@ -320,6 +320,11 @@ export default function Portal() {
           ))}
         </div>
 
+        <button className="sb__new sb__appstore" onClick={() => {
+          setActiveId(APPSTORE_ID); setActiveVpTabId(null);
+        }}>🚀 App Store</button>
+        <button className="sb__new" onClick={addTab}><Plus size={14}/> NEW 프로젝트</button>
+
         {/* Archived */}
         {trash.length > 0 && (
           <div className="trash-section">
@@ -341,11 +346,6 @@ export default function Portal() {
             )}
           </div>
         )}
-
-        <button className="sb__new sb__appstore" onClick={() => {
-          setActiveId(APPSTORE_ID); setActiveVpTabId(null);
-        }}>🚀 App Store</button>
-        <button className="sb__new" onClick={addTab}><Plus size={14}/> NEW 프로젝트</button>
 
         {/* URL edit overlay */}
         {urlEditId && (
