@@ -298,6 +298,8 @@ export default function Portal() {
           {pins.length === 0 && <div style={{ fontSize:".75rem", color:"var(--ink-3)", padding:"8px 0" }}>여기로 드래그하여 즐겨찾기 추가</div>}
         </div>
 
+        <button className="sb__new" onClick={addTab}><Plus size={14}/> NEW 프로젝트</button>
+
         {/* Tab list */}
         <div className="tab-list" onDragOver={onTabListDragOver} onDrop={onTabListDrop}>
           {items.map(t => (
@@ -319,8 +321,6 @@ export default function Portal() {
             </div>
           ))}
         </div>
-
-        <button className="sb__new" onClick={addTab}><Plus size={14}/> NEW 프로젝트</button>
 
         <div style={{ flex:1 }} />
 
