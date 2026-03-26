@@ -41,7 +41,7 @@ const BLOCKED_DOMAINS = [
   'mail.google.com', 'accounts.google.com', 'myaccount.google.com',
   'meet.google.com', 'chat.google.com', 'contacts.google.com',
   'play.google.com', 'photos.google.com', 'maps.google.com',
-  'translate.google.com', 'news.google.com', 'drive.google.com',
+  'translate.google.com', 'news.google.com',
   'github.com', 'twitter.com', 'x.com', 'facebook.com', 'instagram.com',
   'linkedin.com', 'reddit.com', 'amazon.com', 'naver.com', 'daum.net',
   'kakao.com', 'tistory.com', 'notion.so', 'slack.com',
@@ -440,7 +440,8 @@ export default function Portal() {
                 </div>
               );
             }
-            if (embedUrl.includes("docs.google.com/presentation/d/")) embedUrl = embedUrl.replace(/\/edit.*$/, "/embed?start=false&loop=false&delayms=3000");
+            if (embedUrl.includes("drive.google.com/drive/folders/")) { const fid = embedUrl.match(/folders\/([^?&#]+)/)?.[1]; if (fid) embedUrl = `https://drive.google.com/embeddedfolderview?id=${fid}#list`; }
+            else if (embedUrl.includes("docs.google.com/presentation/d/")) embedUrl = embedUrl.replace(/\/edit.*$/, "/embed?start=false&loop=false&delayms=3000");
             else if (embedUrl.includes("youtube.com/watch")) { const vid = new URL(embedUrl).searchParams.get("v"); if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`; }
             else if (embedUrl.includes("youtu.be/")) { const vid = embedUrl.split("youtu.be/")[1]?.split(/[?#]/)[0]; if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`; }
             return <iframe src={embedUrl} style={{ width:"100%", height:"100%", border:"none" }} allow="autoplay; encrypted-media" allowFullScreen />;
