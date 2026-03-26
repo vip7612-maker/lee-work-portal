@@ -1,6 +1,5 @@
 "use client";
-import { ExternalLink, ArrowLeft, Code2 } from "lucide-react";
-import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 
 const apps = [
   {
@@ -86,17 +85,6 @@ export default function AppStore() {
       fontFamily: "'DM Sans', system-ui, sans-serif",
     }}>
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
-        {/* Header */}
-        <div style={{ display:"flex", alignItems:"center", gap:16, marginBottom:32 }}>
-          <Link href="/" style={{
-            display:"flex", alignItems:"center", gap:6, padding:"8px 14px",
-            background:"white", borderRadius:8, border:"1px solid #e2e8f0",
-            color:"#64748b", textDecoration:"none", fontSize:".82rem", fontWeight:500,
-            boxShadow:"0 1px 3px rgba(0,0,0,.06)",
-          }}>
-            <ArrowLeft size={14}/> 포털로 돌아가기
-          </Link>
-        </div>
         <div style={{ textAlign:"center", marginBottom:40 }}>
           <h1 style={{
             fontSize:"2rem", fontWeight:700, color:"#1e293b",
@@ -147,10 +135,8 @@ export default function AppStore() {
                 <p style={{ fontSize: ".72rem", color: "#94a3b8", marginBottom: 14 }}>
                   {app.tech}
                 </p>
-                {/* Buttons */}
-                <div style={{ display: "flex", gap: 8 }}>
-                  <a href={app.url} target="_blank" rel="noreferrer" style={{
-                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                <a href={app.url} target="_blank" rel="noreferrer" style={{
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                     padding: "8px 0", borderRadius: 8,
                     background: app.color, color: "white",
                     fontSize: ".8rem", fontWeight: 500, textDecoration: "none",
@@ -161,19 +147,6 @@ export default function AppStore() {
                   >
                     <ExternalLink size={13}/> 열기
                   </a>
-                  <a href={`https://github.com/vip7612-maker/${app.repo}`} target="_blank" rel="noreferrer" style={{
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                    padding: "8px 14px", borderRadius: 8,
-                    background: "#f1f5f9", color: "#475569",
-                    fontSize: ".8rem", fontWeight: 500, textDecoration: "none",
-                    transition: "background .15s",
-                  }}
-                    onMouseEnter={e => (e.currentTarget.style.background = "#e2e8f0")}
-                    onMouseLeave={e => (e.currentTarget.style.background = "#f1f5f9")}
-                  >
-                    <Code2 size={13}/> GitHub
-                  </a>
-                </div>
               </div>
             </div>
           ))}
