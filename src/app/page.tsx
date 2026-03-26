@@ -73,13 +73,18 @@ export default function Portal() {
   const [trashOpen, setTrashOpen]   = useState(false);
   const [editingId, setEditingId]   = useState<string | null>(null);
   const [editVal, setEditVal]       = useState("");
-  const [ctxMenu, setCtxMenu]       = useState<{ id: string; x: number; y: number } | null>(null);
+  const [ctxMenu, setCtxMenu]       = useState<{ id: string; type?: "tab" | "link"; x: number; y: number } | null>(null);
   const [urlEditId, setUrlEditId]   = useState<string | null>(null);
   const [urlEditVal, setUrlEditVal] = useState("");
+  const [linkEditId, setLinkEditId] = useState<string | null>(null);
+  const [linkEditLabel, setLinkEditLabel] = useState("");
+  const [linkEditUrl, setLinkEditUrl] = useState("");
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [pinDropHover, setPinDropHover] = useState(false);
   const [dbLoaded, setDbLoaded]     = useState(false);
-  const [rpTab, setRpTab]           = useState<'checklist' | 'links' | 'memos'>('checklist');
+  const [rpCheckOpen, setRpCheckOpen] = useState(true);
+  const [rpLinksOpen, setRpLinksOpen] = useState(true);
+  const [rpMemosOpen, setRpMemosOpen] = useState(true);
   const [checks, setChecks]         = useState<CheckItem[]>([]);
   const [newCheck, setNewCheck]     = useState("");
   const [links, setLinks]           = useState<LinkItem[]>([]);
@@ -187,9 +192,12 @@ export default function Portal() {
   const startRename = (t: Tab) => { setEditingId(t.id); setEditVal(t.label); setTimeout(() => editRef.current?.focus(), 0); };
   const commitRename = () => { if (editingId && editVal.trim()) { setTabs(p => p.map(t => t.id === editingId ? { ...t, label: editVal.trim() } : t)); api.put('/api/projects', { id: editingId, label: editVal.trim() }); } setEditingId(null); };
 
-  const openCtx = (e: React.MouseEvent, id: string) => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ id, x: e.clientX, y: e.clientY }); };
+  const openCtx = (e: React.MouseEvent, id: string, type: "tab" | "link" = "tab") => { e.preventDefault(); e.stopPropagation(); setCtxMenu({ id, type, x: e.clientX, y: e.clientY }); };
   const startUrlEdit = (id: string) => { const t = tabs.find(x => x.id === id); setUrlEditId(id); setUrlEditVal(t?.url || ""); setCtxMenu(null); setTimeout(() => urlRef.current?.focus(), 0); };
   const commitUrl = () => { if (urlEditId) { setTabs(p => p.map(t => t.id === urlEditId ? { ...t, url: urlEditVal.trim() } : t)); api.put('/api/projects', { id: urlEditId, url: urlEditVal.trim() }); } setUrlEditId(null); };
+  
+  const startLinkEdit = (l: LinkItem) => { setLinkEditId(l.id); setLinkEditLabel(l.label); setLinkEditUrl(l.url); setCtxMenu(null); };
+  const commitLinkEdit = () => { if (linkEditId) { setLinks(p => p.map(l => l.id === linkEditId ? { ...l, label: linkEditLabel.trim(), url: linkEditUrl.trim() } : l)); api.put('/api/links', { id: linkEditId, label: linkEditLabel.trim(), url: linkEditUrl.trim() }); } setLinkEditId(null); };
 
   const onDragStart = (e: React.DragEvent, id: string) => { dragId.current = id; e.dataTransfer.effectAllowed = "move"; (e.currentTarget as HTMLElement).style.opacity = "0.4"; };
   const onDragEnd = (e: React.DragEvent) => { (e.currentTarget as HTMLElement).style.opacity = "1"; dragId.current = null; setDragOverId(null); setPinDropHover(false); };
@@ -364,10 +372,37 @@ export default function Portal() {
             </div>
           </div>
         )}
+        
+        {/* Link Edit overlay */}
+        {linkEditId && (
+          <div className="url-edit-overlay" onClick={e => e.stopPropagation()}>
+            <div className="url-edit-box">
+              <label>링크 수정</label>
+              <input value={linkEditLabel} onChange={e => setLinkEditLabel(e.target.value)} placeholder="링크 버튼 이름"
+                onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) commitLinkEdit(); if (e.key === "Escape") setLinkEditId(null); }} style={{ marginBottom: 8 }} />
+              <input value={linkEditUrl} onChange={e => setLinkEditUrl(e.target.value)} placeholder="https://example.com"
+                onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) commitLinkEdit(); if (e.key === "Escape") setLinkEditId(null); }} />
+              <div className="url-edit-btns">
+                <button onClick={() => setLinkEditId(null)}>취소</button>
+                <button className="url-edit-save" onClick={commitLinkEdit}>저장</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Context menu */}
       {ctxMenu && (() => {
+        if (ctxMenu.type === "link") {
+          return (
+            <div className="ctx-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }} onClick={e => e.stopPropagation()}>
+              <button onClick={() => { const l = links.find(x => x.id === ctxMenu.id); if(l) startLinkEdit(l); }}>수정</button>
+              <div className="ctx-divider" />
+              <button className="ctx-danger" onClick={() => { removeLink(ctxMenu.id); setCtxMenu(null); }}>삭제</button>
+            </div>
+          );
+        }
+        
         const isArchived = trash.some(t => t.id === ctxMenu.id);
         const isActive = tabs.some(t => t.id === ctxMenu.id);
         return (
@@ -444,7 +479,28 @@ export default function Portal() {
             const url = currentVpUrl?.replace(/\s+/g, '');
             if (!url) return (<div style={{ padding:"60px 40px", color:"var(--ink-3)", textAlign:"center" }}><h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active?.label || '대시보드'}</h2><p>링크를 설정하려면 우클릭 → 링크 변경</p></div>);
             let embedUrl = url.startsWith("http") ? url : `https://${url}`;
+            
+            // Google Drive Auto-embed rewrites
+            if (embedUrl.includes("drive.google.com")) {
+              const folderMatch = embedUrl.match(/folders\/([a-zA-Z0-9_-]+)/);
+              if (folderMatch) {
+                embedUrl = `https://drive.google.com/embeddedfolderview?id=${folderMatch[1]}#grid`;
+              } else if (embedUrl.includes("/file/d/") && embedUrl.includes("/view")) {
+                embedUrl = embedUrl.replace(/\/view.*$/, "/preview");
+              }
+            } else if (embedUrl.includes("docs.google.com/presentation/d/")) {
+              embedUrl = embedUrl.replace(/\/edit.*$/, "/embed?start=false&loop=false&delayms=3000");
+            } else if (embedUrl.includes("youtube.com/watch")) {
+              const vid = new URL(embedUrl).searchParams.get("v"); if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`;
+            } else if (embedUrl.includes("youtu.be/")) {
+              const vid = embedUrl.split("youtu.be/")[1]?.split(/[?#]/)[0]; if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`;
+            }
+
             const domain = embedUrl.replace(/https?:\/\//, '').split('/')[0].replace('www.','');
+            
+            // Exclude from blocklist if it's specifically an embeddable view
+            const isEmbeddableDrive = embedUrl.includes("drive.google.com/embeddedfolderview") || (embedUrl.includes("drive.google.com/file/d/") && embedUrl.includes("/preview"));
+
             /* Block same-origin (recursive iframe) */
             if (typeof window !== 'undefined' && embedUrl.includes(window.location.hostname)) {
               return (
@@ -458,7 +514,7 @@ export default function Portal() {
                 </div>
               );
             }
-            if (BLOCKED_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))) {
+            if (!isEmbeddableDrive && BLOCKED_DOMAINS.some(d => domain === d || domain.endsWith('.' + d))) {
               return (
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', gap:12, color:'var(--ink-3)' }}>
                   <Lock size={32} />
@@ -471,9 +527,6 @@ export default function Portal() {
                 </div>
               );
             }
-            if (embedUrl.includes("docs.google.com/presentation/d/")) embedUrl = embedUrl.replace(/\/edit.*$/, "/embed?start=false&loop=false&delayms=3000");
-            else if (embedUrl.includes("youtube.com/watch")) { const vid = new URL(embedUrl).searchParams.get("v"); if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`; }
-            else if (embedUrl.includes("youtu.be/")) { const vid = embedUrl.split("youtu.be/")[1]?.split(/[?#]/)[0]; if (vid) embedUrl = `https://www.youtube.com/embed/${vid}`; }
             return <iframe src={embedUrl} style={{ width:"100%", height:"100%", border:"none" }} allow="autoplay; encrypted-media" allowFullScreen />;
           })()}
         </div>
@@ -482,90 +535,101 @@ export default function Portal() {
       {/* ═══ RIGHT PANEL ═══ */}
       <div className="rp">
         <div className="rp__header">
-          <div className="rp__tabs-nav">
-            <button className={`rp__tab-btn ${rpTab==='checklist' ? 'is-active' : ''}`} onClick={() => setRpTab('checklist')}><CheckSquare size={13}/> 체크리스트</button>
-            <button className={`rp__tab-btn ${rpTab==='links' ? 'is-active' : ''}`} onClick={() => setRpTab('links')}><Link2 size={13}/> 링크</button>
-            <button className={`rp__tab-btn ${rpTab==='memos' ? 'is-active' : ''}`} onClick={() => setRpTab('memos')}><MessageSquare size={13}/> 메모</button>
+          <div className="rp__title" style={{ fontWeight: 700, fontSize: ".9rem", color: "var(--ink)", display: "flex", alignItems: "center" }}>
+            {active?.label || ''}
           </div>
           <div style={{ display:"flex", gap:10 }}>
             <X size={15} style={{ cursor:"pointer" }} onClick={() => setPanelOpen(false)}/>
           </div>
         </div>
 
-        <div className="rp__body">
-          {rpTab === 'checklist' && (
-            <div className="rp-section">
-              <div className="rp-section__title">{active?.label} 체크리스트</div>
-              {checks.length === 0 && <p className="rp-empty">아직 항목이 없습니다</p>}
-              {checks.map(c => (
-                <div key={c.id} className={`check-item ${c.checked ? 'is-done' : ''}`}>
-                  <button className="check-item__box" onClick={() => toggleCheck(c.id)}>
-                    {c.checked ? <CheckSquare size={16} color="var(--tint)"/> : <Square size={16}/>}
-                  </button>
-                  <span className="check-item__text">{c.text}</span>
-                  <button className="check-item__del" onClick={() => removeCheck(c.id)}><X size={12}/></button>
-                </div>
-              ))}
-              <div className="check-add">
-                <input value={newCheck} onChange={e => setNewCheck(e.target.value)} placeholder="할 일 추가..."
-                  onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) addCheck(); }} />
-                <button onClick={addCheck}><Plus size={14}/></button>
-              </div>
+        <div className="rp__body" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {/* CHECKLIST */}
+          <div className="rp-section">
+            <div className="rp-section__title" onClick={() => setRpCheckOpen(v => !v)} style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ display:"flex", alignItems:"center", gap:6 }}><CheckSquare size={13}/> 체크리스트</span>
+              <ChevronDown size={14} style={{ transform: rpCheckOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: "var(--ink-3)" }} />
             </div>
-          )}
-
-          {rpTab === 'links' && (
-            <div className="rp-section">
-              <div className="rp-section__title">{active?.label} 바로가기</div>
-              {links.length === 0 && <p className="rp-empty">링크 버튼을 추가하세요</p>}
-              {links.map(l => (
-                <div key={l.id} className="link-card">
-                  <a href={l.url.startsWith('http') ? l.url : `https://${l.url}`} target="_blank" rel="noreferrer" className="link-card__main">
-                    <img src={`https://www.google.com/s2/favicons?domain=${l.url.replace(/https?:\/\//, '').split('/')[0]}&sz=32`} alt="" width={16} height={16} style={{ borderRadius:2 }}/>
-                    <span>{l.label}</span>
-                    <ExternalLink size={12}/>
-                  </a>
-                  <button className="link-card__del" onClick={() => removeLink(l.id)}><X size={12}/></button>
-                </div>
-              ))}
-              <div className="link-add">
-                <input value={newLinkLabel} onChange={e => setNewLinkLabel(e.target.value)} placeholder="버튼 이름" />
-                <input value={newLinkUrl} onChange={e => setNewLinkUrl(e.target.value)} placeholder="URL"
-                  onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) addLink(); }} />
-                <button onClick={addLink}><Plus size={14}/></button>
-              </div>
-            </div>
-          )}
-
-          {rpTab === 'memos' && (
-            <div className="rp-section rp-section--memos">
-              <div className="rp-section__title">{active?.label} 메모</div>
-              <div className="memo-thread">
-                {memos.length === 0 && <p className="rp-empty">메모를 남겨보세요</p>}
-                {memos.map(m => (
-                  <div key={m.id} className="memo-bubble">
-                    <div className="memo-bubble__text">{m.text}</div>
-                    <div className="memo-bubble__meta">
-                      <span>{new Date(m.created_at).toLocaleString('ko-KR', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}</span>
-                      <button onClick={() => removeMemo(m.id)}><Trash2 size={11}/></button>
-                    </div>
+            {rpCheckOpen && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+                {checks.length === 0 && <p className="rp-empty">아직 항목이 없습니다</p>}
+                {checks.map(c => (
+                  <div key={c.id} className={`check-item ${c.checked ? 'is-done' : ''}`}>
+                    <button className="check-item__box" onClick={() => toggleCheck(c.id)}>
+                      {c.checked ? <CheckSquare size={16} color="var(--tint)"/> : <Square size={16}/>}
+                    </button>
+                    <span className="check-item__text">{c.text}</span>
+                    <button className="check-item__del" onClick={() => removeCheck(c.id)}><X size={12}/></button>
                   </div>
                 ))}
-                <div ref={memosEndRef} />
+                <div className="check-add">
+                  <input value={newCheck} onChange={e => setNewCheck(e.target.value)} placeholder="할 일 추가..."
+                    onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) addCheck(); }} />
+                  <button onClick={addCheck}><Plus size={14}/></button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-
-        {rpTab === 'memos' && (
-          <div className="rp__footer">
-            <div className="rp__input">
-              <input value={newMemo} onChange={e => setNewMemo(e.target.value)} placeholder="메모를 입력하세요..."
-                onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) addMemo(); }} />
-              <button className="rp__send" onClick={addMemo}><ArrowUp size={12}/></button>
-            </div>
+            )}
           </div>
-        )}
+
+          {/* LINKS */}
+          <div className="rp-section">
+            <div className="rp-section__title" onClick={() => setRpLinksOpen(v => !v)} style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ display:"flex", alignItems:"center", gap:6 }}><Link2 size={13}/> 링크 바로가기</span>
+              <ChevronDown size={14} style={{ transform: rpLinksOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: "var(--ink-3)" }} />
+            </div>
+            {rpLinksOpen && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+                {links.length === 0 && <p className="rp-empty">링크 버튼을 추가하세요</p>}
+                {links.map(l => (
+                  <div key={l.id} className="link-card" onContextMenu={e => openCtx(e, l.id, "link")}>
+                    <a href={l.url.startsWith('http') ? l.url : `https://${l.url}`} target="_blank" rel="noreferrer" className="link-card__main">
+                      <img src={`https://www.google.com/s2/favicons?domain=${l.url.replace(/https?:\/\//, '').split('/')[0]}&sz=32`} alt="" width={16} height={16} style={{ borderRadius:2 }}/>
+                      <span>{l.label}</span>
+                      <ExternalLink size={12}/>
+                    </a>
+                    <button className="link-card__del" onClick={() => removeLink(l.id)}><X size={12}/></button>
+                  </div>
+                ))}
+                <div className="link-add">
+                  <input value={newLinkLabel} onChange={e => setNewLinkLabel(e.target.value)} placeholder="버튼 이름" />
+                  <input value={newLinkUrl} onChange={e => setNewLinkUrl(e.target.value)} placeholder="URL"
+                    onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) addLink(); }} />
+                  <button onClick={addLink}><Plus size={14}/></button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* MEMOS */}
+          <div className="rp-section rp-section--memos">
+            <div className="rp-section__title" onClick={() => setRpMemosOpen(v => !v)} style={{ cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ display:"flex", alignItems:"center", gap:6 }}><MessageSquare size={13}/> 메모</span>
+              <ChevronDown size={14} style={{ transform: rpMemosOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: "var(--ink-3)" }} />
+            </div>
+            {rpMemosOpen && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
+                <div className="memo-thread" style={{ maxHeight: "300px", overflowY: "auto", paddingRight: "4px" }}>
+                  {memos.length === 0 && <p className="rp-empty">메모를 남겨보세요</p>}
+                  {memos.map(m => (
+                    <div key={m.id} className="memo-bubble">
+                      <div className="memo-bubble__text">{m.text}</div>
+                      <div className="memo-bubble__meta">
+                        <span>{new Date(m.created_at).toLocaleString('ko-KR', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })}</span>
+                        <button onClick={() => removeMemo(m.id)}><Trash2 size={11}/></button>
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={memosEndRef} />
+                </div>
+                <div className="rp__input" style={{ flexShrink: 0 }}>
+                  <input value={newMemo} onChange={e => setNewMemo(e.target.value)} placeholder="메모를 입력하세요..."
+                    onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) addMemo(); }} />
+                  <button className="rp__send" onClick={addMemo}><ArrowUp size={12}/></button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
