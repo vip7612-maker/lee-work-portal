@@ -8,6 +8,7 @@ import {
   MessageSquare, PanelRight, PanelLeftClose, ArrowUp,
   CheckSquare, Square, Link2, ExternalLink, Trash2, Home
 } from "lucide-react";
+import Dashboard from "./dashboard/page";
 
 /* ── Types ── */
 type Tab = {
@@ -258,7 +259,7 @@ export default function Portal() {
 
   const isDashboard = activeId === DASHBOARD_ID;
   const currentVpUrl = (() => {
-    if (isDashboard) return `${typeof window !== 'undefined' ? window.location.origin : ''}/dashboard`;
+    if (isDashboard) return '';
     if (activeVpTabId) { const vt = vpTabs.find(t => t.id === activeVpTabId); if (vt) return vt.url; }
     return active?.url || '';
   })();
@@ -441,7 +442,7 @@ export default function Portal() {
 
         {/* Iframe (area 2) */}
         <div className="vp__body">
-          {(() => {
+          {isDashboard && !activeVpTabId ? <Dashboard /> : (() => {
             const url = currentVpUrl;
             if (!url) return (<div style={{ padding:"60px 40px", color:"var(--ink-3)", textAlign:"center" }}><h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active?.label || '대시보드'}</h2><p>링크를 설정하려면 우클릭 → 링크 변경</p></div>);
             let embedUrl = url.startsWith("http") ? url : `https://${url}`;
