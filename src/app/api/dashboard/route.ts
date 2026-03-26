@@ -12,7 +12,7 @@ export async function GET() {
     const stats = await Promise.all(
       projects.rows.map(async (p: any) => {
         const checks = await turso.execute({ sql: "SELECT checked FROM checklists WHERE project_id = ?", args: [p.id] });
-        const links = await turso.execute({ sql: "SELECT COUNT(*) as cnt FROM links WHERE project_id = ?", args: [p.id] });
+        const links = await turso.execute({ sql: "SELECT COUNT(*) as cnt FROM link_buttons WHERE project_id = ?", args: [p.id] });
         const memos = await turso.execute({ sql: "SELECT COUNT(*) as cnt FROM comments WHERE project_id = ?", args: [p.id] });
         return {
           id: p.id,
