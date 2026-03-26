@@ -167,14 +167,18 @@ html, body { margin:0; padding:0; height:100vh; overflow:hidden;
   display: flex; align-items: center; gap: 4px;
   padding: 6px 12px; font-size: .78rem; font-weight: 500;
   cursor: pointer; white-space: nowrap;
-  border: none; background: none; color: var(--ink-3);
-  border-radius: 6px 6px 0 0;
+  border: 1px solid rgba(0,0,0,.08); background: rgba(255,255,255,.5); color: var(--ink-3);
+  border-radius: 6px 6px 0 0; border-bottom: none;
   transition: all .15s;
+  box-shadow: 0 -1px 3px rgba(0,0,0,.04);
 }
-.vp__tab:hover { background: rgba(0,0,0,.04); color: var(--ink-2); }
+.vp__tab:hover { background: rgba(255,255,255,.85); color: var(--ink-2); box-shadow: 0 -1px 4px rgba(0,0,0,.08); }
 .vp__tab.is-active {
   background: var(--surface); color: var(--ink);
-  box-shadow: 0 1px 0 var(--surface);
+  border-color: rgba(0,0,0,.12);
+  box-shadow: 0 -2px 6px rgba(0,0,0,.06);
+  border-bottom: 2px solid var(--tint);
+  font-weight: 600;
 }
 .vp__tab-x {
   font-size: .7rem; opacity: 0; margin-left: 2px;
