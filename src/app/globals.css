@@ -143,6 +143,13 @@ html, body { margin:0; padding:0; height:100vh; overflow:hidden;
 }
 .sb__appstore:hover { opacity: .9; color: white !important; }
 
+.sb__aaronai {
+  background: linear-gradient(135deg, #0EA5E9, #3B82F6) !important;
+  color: white !important;
+  border-radius: 6px !important; margin-bottom: 6px !important;
+}
+.sb__aaronai:hover { opacity: .9; color: white !important; }
+
 /* ── Col 2 : Viewport ── */
 .vp {
   display: flex; flex-direction: column;

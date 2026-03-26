@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import Dashboard from "./dashboard/page";
 import AppStorePage from "./app-store/page";
+import AaronAIPage from "./aaron-ai/page";
 
 /* ── Types ── */
 type Tab = {
@@ -24,6 +25,7 @@ type VpTab     = { id: string; project_id: string; name: string; url: string; so
 const COLORS = ["#ea4335","#34a853","#fbbc04","#4285f4","#ff6d01","#673ab7","#00bcd4","#8bc34a"];
 const DASHBOARD_ID = "__dashboard__";
 const APPSTORE_ID = "__appstore__";
+const AARON_AI_ID = "__aaron_ai__";
 
 const seed: Tab[] = [
   { id:"p1", label:"Gmail",      url:"mail.google.com",    pinned:true, memo:"", color:"#ea4335" },
@@ -270,13 +272,14 @@ export default function Portal() {
 
   const isDashboard = activeId === DASHBOARD_ID;
   const isAppStore = activeId === APPSTORE_ID;
+  const isAaronAi = activeId === AARON_AI_ID;
   const currentVpUrl = (() => {
-    if (isDashboard || isAppStore) return '';
+    if (isDashboard || isAppStore || isAaronAi) return '';
     if (activeVpTabId) { const vt = vpTabs.find(t => t.id === activeVpTabId); if (vt) return vt.url; }
     return active?.url || '';
   })();
 
-  if (!active && !isDashboard && !isAppStore) return <div className="login-screen"><p style={{ color:"var(--ink-3)" }}>프로젝트를 불러오는 중...</p></div>;
+  if (!active && !isDashboard && !isAppStore && !isAaronAi) return <div className="login-screen"><p style={{ color:"var(--ink-3)" }}>프로젝트를 불러오는 중...</p></div>;
 
   return (
     <div className={`shell ${panelOpen ? "panel-open" : "panel-closed"} ${sbOpen ? '' : 'sb-closed'}`} style={{ "--sb": `${sbWidth}px` } as React.CSSProperties}>
@@ -333,6 +336,9 @@ export default function Portal() {
 
         <div style={{ flex:1 }} />
 
+        <button className="sb__new sb__aaronai" onClick={() => {
+          setActiveId(AARON_AI_ID); setActiveVpTabId(null);
+        }}>🤖 아론 AI비서</button>
         <button className="sb__new sb__appstore" onClick={() => {
           setActiveId(APPSTORE_ID); setActiveVpTabId(null);
         }}>🚀 App Store</button>
@@ -419,7 +425,7 @@ export default function Portal() {
             </button>
             <button className={`vp__tab ${!activeVpTabId ? 'is-active' : ''}`}
               onClick={() => setActiveVpTabId(null)}>
-              {isDashboard ? '📊 대시보드' : isAppStore ? '🚀 App Store' : active?.label}
+              {isDashboard ? '📊 대시보드' : isAppStore ? '🚀 App Store' : isAaronAi ? '🤖 아론 AI비서' : active?.label}
             </button>
             {vpTabs.map(vt => (
               <button key={vt.id} className={`vp__tab ${activeVpTabId===vt.id ? 'is-active' : ''}`}
@@ -459,7 +465,7 @@ export default function Portal() {
 
         {/* Iframe (area 2) */}
         <div className="vp__body">
-          {(isDashboard || isAppStore) && !activeVpTabId ? (isDashboard ? <Dashboard /> : <AppStorePage />) : (() => {
+          {(isDashboard || isAppStore || isAaronAi) && !activeVpTabId ? (isDashboard ? <Dashboard /> : isAppStore ? <AppStorePage /> : <AaronAIPage />) : (() => {
             const url = currentVpUrl?.replace(/\s+/g, '');
             if (!url) return (<div style={{ padding:"60px 40px", color:"var(--ink-3)", textAlign:"center" }}><h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active?.label || '대시보드'}</h2><p>링크를 설정하려면 우클릭 → 링크 변경</p></div>);
             let embedUrl = url.startsWith("http") ? url : `https://${url}`;
