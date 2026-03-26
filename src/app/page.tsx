@@ -41,7 +41,7 @@ const BLOCKED_DOMAINS = [
   'mail.google.com', 'accounts.google.com', 'myaccount.google.com',
   'meet.google.com', 'chat.google.com', 'contacts.google.com',
   'play.google.com', 'photos.google.com', 'maps.google.com',
-  'translate.google.com', 'news.google.com',
+  'translate.google.com', 'news.google.com', 'drive.google.com',
   'github.com', 'twitter.com', 'x.com', 'facebook.com', 'instagram.com',
   'linkedin.com', 'reddit.com', 'amazon.com', 'naver.com', 'daum.net',
   'kakao.com', 'tistory.com', 'notion.so', 'slack.com',
