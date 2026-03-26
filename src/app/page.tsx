@@ -372,23 +372,6 @@ export default function Portal() {
             </div>
           </div>
         )}
-        
-        {/* Link Edit overlay */}
-        {linkEditId && (
-          <div className="url-edit-overlay" onClick={e => e.stopPropagation()}>
-            <div className="url-edit-box">
-              <label>링크 수정</label>
-              <input value={linkEditLabel} onChange={e => setLinkEditLabel(e.target.value)} placeholder="링크 버튼 이름"
-                onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) commitLinkEdit(); if (e.key === "Escape") setLinkEditId(null); }} style={{ marginBottom: 8 }} />
-              <input value={linkEditUrl} onChange={e => setLinkEditUrl(e.target.value)} placeholder="https://example.com"
-                onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) commitLinkEdit(); if (e.key === "Escape") setLinkEditId(null); }} />
-              <div className="url-edit-btns">
-                <button onClick={() => setLinkEditId(null)}>취소</button>
-                <button className="url-edit-save" onClick={commitLinkEdit}>저장</button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Context menu */}
@@ -630,6 +613,23 @@ export default function Portal() {
             )}
           </div>
         </div>
+
+        {/* Link Edit overlay */}
+        {linkEditId && (
+          <div className="url-edit-overlay" onClick={e => e.stopPropagation()}>
+            <div className="url-edit-box">
+              <label>링크 수정</label>
+              <input value={linkEditLabel} onChange={e => setLinkEditLabel(e.target.value)} placeholder="링크 버튼 이름"
+                onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) commitLinkEdit(); if (e.key === "Escape") setLinkEditId(null); }} style={{ marginBottom: 8 }} />
+              <input value={linkEditUrl} onChange={e => setLinkEditUrl(e.target.value)} placeholder="https://example.com"
+                onKeyDown={e => { if (e.key === "Enter" && !e.nativeEvent.isComposing) commitLinkEdit(); if (e.key === "Escape") setLinkEditId(null); }} />
+              <div className="url-edit-btns">
+                <button onClick={() => setLinkEditId(null)}>취소</button>
+                <button className="url-edit-save" onClick={commitLinkEdit}>저장</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

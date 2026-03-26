@@ -239,6 +239,7 @@ html, body { margin:0; padding:0; height:100vh; overflow:hidden;
 
 /* ── Col 3 : Right Panel (Chelsea) ── */
 .rp {
+  position: relative;
   display: flex; flex-direction: column;
   background: var(--surface);
   border-radius: 8px;
