@@ -9,6 +9,7 @@ import {
   CheckSquare, Square, Link2, ExternalLink, Trash2, Home
 } from "lucide-react";
 import Dashboard from "./dashboard/page";
+import AppStorePage from "./app-store/page";
 
 /* ── Types ── */
 type Tab = {
@@ -22,6 +23,7 @@ type VpTab     = { id: string; project_id: string; name: string; url: string; so
 
 const COLORS = ["#ea4335","#34a853","#fbbc04","#4285f4","#ff6d01","#673ab7","#00bcd4","#8bc34a"];
 const DASHBOARD_ID = "__dashboard__";
+const APPSTORE_ID = "__appstore__";
 
 const seed: Tab[] = [
   { id:"p1", label:"Gmail",      url:"mail.google.com",    pinned:true, memo:"", color:"#ea4335" },
@@ -258,13 +260,14 @@ export default function Portal() {
   };
 
   const isDashboard = activeId === DASHBOARD_ID;
+  const isAppStore = activeId === APPSTORE_ID;
   const currentVpUrl = (() => {
-    if (isDashboard) return '';
+    if (isDashboard || isAppStore) return '';
     if (activeVpTabId) { const vt = vpTabs.find(t => t.id === activeVpTabId); if (vt) return vt.url; }
     return active?.url || '';
   })();
 
-  if (!active && !isDashboard) return <div className="login-screen"><p style={{ color:"var(--ink-3)" }}>프로젝트를 불러오는 중...</p></div>;
+  if (!active && !isDashboard && !isAppStore) return <div className="login-screen"><p style={{ color:"var(--ink-3)" }}>프로젝트를 불러오는 중...</p></div>;
 
   return (
     <div className={`shell ${panelOpen ? "panel-open" : "panel-closed"} ${sbOpen ? '' : 'sb-closed'}`} style={{ "--sb": `${sbWidth}px` } as React.CSSProperties}>
@@ -340,15 +343,7 @@ export default function Portal() {
         )}
 
         <button className="sb__new sb__appstore" onClick={() => {
-          const appStoreTab = tabs.find(t => t.label === 'App Store');
-          if (appStoreTab) { setActiveId(appStoreTab.id); }
-          else {
-            const id = uid();
-            const newTab: Tab = { id, label: 'App Store', url: `${window.location.origin}/app-store`, pinned: false, memo: '', color: '#8B5CF6' };
-            setTabs(prev => [...prev, newTab]);
-            setActiveId(id);
-            api.post('/api/projects', { ...newTab, pinned: 0, sort_order: tabs.length, archived: 0 });
-          }
+          setActiveId(APPSTORE_ID); setActiveVpTabId(null);
         }}>🚀 App Store</button>
         <button className="sb__new" onClick={addTab}><Plus size={14}/> NEW 프로젝트</button>
 
@@ -402,7 +397,7 @@ export default function Portal() {
             </button>
             <button className={`vp__tab ${!activeVpTabId ? 'is-active' : ''}`}
               onClick={() => setActiveVpTabId(null)}>
-              {isDashboard ? '📊 대시보드' : active?.label}
+              {isDashboard ? '📊 대시보드' : isAppStore ? '🚀 App Store' : active?.label}
             </button>
             {vpTabs.map(vt => (
               <button key={vt.id} className={`vp__tab ${activeVpTabId===vt.id ? 'is-active' : ''}`}
@@ -442,7 +437,7 @@ export default function Portal() {
 
         {/* Iframe (area 2) */}
         <div className="vp__body">
-          {isDashboard && !activeVpTabId ? <Dashboard /> : (() => {
+          {(isDashboard || isAppStore) && !activeVpTabId ? (isDashboard ? <Dashboard /> : <AppStorePage />) : (() => {
             const url = currentVpUrl;
             if (!url) return (<div style={{ padding:"60px 40px", color:"var(--ink-3)", textAlign:"center" }}><h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active?.label || '대시보드'}</h2><p>링크를 설정하려면 우클릭 → 링크 변경</p></div>);
             let embedUrl = url.startsWith("http") ? url : `https://${url}`;
