@@ -4,6 +4,9 @@ import * as LucideIcons from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 type AgentFeature = {
   id: string;
@@ -49,6 +52,36 @@ const resizeImage = (file: File): Promise<string> => {
   });
 };
 
+function SortableFeatureCard({ feat, onClick }: { feat: AgentFeature, onClick: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: feat.id });
+  
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : 1,
+    opacity: isDragging ? 0.6 : 1,
+  };
+
+  return (
+    <div 
+      ref={setNodeRef} style={style} {...attributes} {...listeners}
+      onClick={onClick}
+      className={`feature-card ${isDragging ? 'dragging' : ''}`}
+    >
+      <div style={{ height: 100, background: feat.thumbnail ? "transparent" : feat.bgGrad, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", pointerEvents: "none" }}>
+        {feat.thumbnail 
+          ? <img src={feat.thumbnail} alt="thumb" style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }} />
+          : renderIcon(feat.icon, { size: 36, color: "white", opacity: 0.9 })
+        }
+      </div>
+      <div style={{ padding: "16px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
+        <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#1e293b", marginBottom: 8, lineHeight: 1.3 }}>{feat.title}</h3>
+        <p style={{ fontSize: "0.82rem", color: "#64748b", lineHeight: 1.5, flex: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" }}>{feat.description}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function AaronAIGallery() {
   const [features, setFeatures] = useState<AgentFeature[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +114,34 @@ export default function AaronAIGallery() {
       console.error("Failed to load features", e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 100, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = async (event: any) => {
+    const { active, over } = event;
+    if (active.id !== over?.id && over) {
+      const oldIndex = features.findIndex(f => f.id === active.id);
+      const newIndex = features.findIndex(f => f.id === over.id);
+      const newFeatures = arrayMove(features, oldIndex, newIndex);
+      
+      // Optimistic UI update
+      setFeatures(newFeatures);
+      
+      const orderedIds = newFeatures.map(f => f.id);
+      try {
+        await fetch('/api/aaron-features/reorder', {
+          method: 'POST',
+          body: JSON.stringify({ orderedIds })
+        });
+      } catch (err) {
+        console.error("Reorder failed", err);
+      }
     }
   };
 
@@ -231,71 +292,47 @@ export default function AaronAIGallery() {
             Aaron Agent <span style={{ color: "#0ea5e9" }}>Gallery</span>
           </h1>
           <p style={{ color: "#64748b", fontSize: "1rem", fontWeight: 500, maxWidth: 580, margin: "0 auto", lineHeight: 1.6 }}>
-            아론(Aaron) AI 비서의 다양한 기능을 직접 편집하고 관리해 보세요. 각 카드를 클릭하면 상세 가이드를 볼 수 있습니다.
+            아론(Aaron) AI 비서의 다양한 기능을 직접 편집하고 관리해 보세요. 카드를 잡아 끌어(Drag) 순서를 바꿀 수 있습니다.
           </p>
         </div>
 
         {/* Gallery Grid - smaller cards */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-          gap: 20,
-        }}>
-          {features.map((feat) => (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+            gap: 20,
+          }}>
+            <SortableContext items={features.map(f => f.id)} strategy={rectSortingStrategy}>
+              {features.map((feat) => (
+                <SortableFeatureCard key={feat.id} feat={feat} onClick={() => handleOpenModal(feat)} />
+              ))}
+            </SortableContext>
+
+            {/* ADD NEW CARD */}
             <div 
-              key={feat.id} 
-              onClick={() => handleOpenModal(feat)}
+              onClick={handleAddNew}
               style={{
-                background: "white", border: "1px solid rgba(0,0,0,0.04)", borderRadius: 16,
-                overflow: "hidden", cursor: "pointer", display: "flex", flexDirection: "column",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.03)", transition: "all 0.2s ease-out",
-                position: "relative"
+                background: "rgba(255,255,255,0.4)", border: "2px dashed #cbd5e1", borderRadius: 16,
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", transition: "all 0.2s", minHeight: 200, color: "#94a3b8"
               }}
               onMouseEnter={e => {
-                e.currentTarget.style.transform = "translateY(-4px)";
-                e.currentTarget.style.boxShadow = "0 12px 24px rgba(0,0,0,0.08)";
+                e.currentTarget.style.background = "rgba(255,255,255,0.8)";
+                e.currentTarget.style.borderColor = "#94a3b8";
+                e.currentTarget.style.color = "#64748b";
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.03)";
+                e.currentTarget.style.background = "rgba(255,255,255,0.4)";
+                e.currentTarget.style.borderColor = "#cbd5e1";
+                e.currentTarget.style.color = "#94a3b8";
               }}
             >
-              <div style={{ height: 100, background: feat.thumbnail ? "transparent" : feat.bgGrad, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-                {feat.thumbnail 
-                  ? <img src={feat.thumbnail} alt="thumb" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  : renderIcon(feat.icon, { size: 36, color: "white", opacity: 0.9 })
-                }
-              </div>
-              <div style={{ padding: "16px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
-                <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#1e293b", marginBottom: 8, lineHeight: 1.3 }}>{feat.title}</h3>
-                <p style={{ fontSize: "0.82rem", color: "#64748b", lineHeight: 1.5, flex: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" }}>{feat.description}</p>
-              </div>
+              {isSaving ? <LucideIcons.Loader2 className="spin" size={32} /> : <LucideIcons.PlusCircle size={36} />}
+              <span style={{ marginTop: 12, fontWeight: 600, fontSize: "0.95rem" }}>새 기능 추가</span>
             </div>
-          ))}
-
-          {/* ADD NEW CARD */}
-          <div 
-            onClick={handleAddNew}
-            style={{
-              background: "rgba(255,255,255,0.4)", border: "2px dashed #cbd5e1", borderRadius: 16,
-              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-              cursor: "pointer", transition: "all 0.2s", minHeight: 200, color: "#94a3b8"
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = "rgba(255,255,255,0.8)";
-              e.currentTarget.style.borderColor = "#94a3b8";
-              e.currentTarget.style.color = "#64748b";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = "rgba(255,255,255,0.4)";
-              e.currentTarget.style.borderColor = "#cbd5e1";
-              e.currentTarget.style.color = "#94a3b8";
-            }}
-          >
-            {isSaving ? <LucideIcons.Loader2 className="spin" size={32} /> : <LucideIcons.PlusCircle size={36} />}
-            <span style={{ marginTop: 12, fontWeight: 600, fontSize: "0.95rem" }}>새 기능 추가</span>
           </div>
-        </div>
+        </DndContext>
 
         {/* Feature Modal */}
         {selectedFeature && (
@@ -425,6 +462,20 @@ export default function AaronAIGallery() {
           @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
           .spin { animation: spin 1s linear infinite; }
           @keyframes spin { 100% { transform: rotate(360deg); } }
+          
+          .feature-card {
+            background: white; border: 1px solid rgba(0,0,0,0.04); border-radius: 16px;
+            overflow: hidden; cursor: grab; display: flex; flex-direction: column;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+            position: relative;
+          }
+          .feature-card:hover {
+            transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+          }
+          .feature-card:active {
+            cursor: grabbing;
+          }
+
           .edit-input {
             width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px;
             font-size: 0.9rem; outline: none; background: white;
