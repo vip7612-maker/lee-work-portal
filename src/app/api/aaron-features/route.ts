@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import db from '@/lib/turso';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const res = await db.execute('SELECT * FROM aaron_features ORDER BY sort_order ASC, id ASC');
