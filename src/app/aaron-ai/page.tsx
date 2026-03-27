@@ -345,35 +345,25 @@ export default function AaronAIGallery() {
                   </div>
                 ) : (
                   <div style={{ width: "100%", marginBottom: 12 }}>
-                    <div style={{ display: "flex", gap: 16, alignItems: "flex-end" }}>
-                      <div style={{ flex: 1 }}>
-                        <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginBottom: 4, display: "block" }}>아이콘 이름 (Lucide)</label>
-                        <input className="edit-input" value={editIcon} onChange={e => setEditIcon(e.target.value)} placeholder="Bot, Smartphone 등..." />
-                      </div>
-                      <div style={{ flex: 1.5 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                           <div style={{ flex: 1 }}>
-                             <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginBottom: 4, display: "block" }}>썸네일 이미지 파일 (아이콘 대체)</label>
-                             <input type="file" accept="image/*" className="edit-input" style={{ padding: "4px 8px" }} onChange={async e => {
-                               const file = e.target.files?.[0];
-                               if(!file) return;
-                               try {
-                                 const b64 = await resizeImage(file);
-                                 setEditThumbnail(b64);
-                               } catch(err) { console.error(err); alert("이미지 처리 중 오류가 발생했습니다."); }
-                             }} />
-                           </div>
-                           {editThumbnail && (
-                             <div style={{ position: "relative", width: 36, height: 36, borderRadius: 8, overflow: "hidden", flexShrink: 0, marginTop: 18 }}>
-                               <img src={editThumbnail} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="prev" />
-                               <div onClick={() => setEditThumbnail("")} style={{ position: "absolute", top: 0, right: 0, background: "rgba(0,0,0,0.6)", color: "white", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 10, borderBottomLeftRadius: 4 }}>X</div>
-                             </div>
-                           )}
-                        </div>
-                      </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                       <div style={{ flex: 1 }}>
+                         <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginBottom: 4, display: "block" }}>썸네일 이미지 파일 업로드</label>
+                         <input type="file" accept="image/*" className="edit-input" style={{ padding: "4px 8px" }} onChange={async e => {
+                           const file = e.target.files?.[0];
+                           if(!file) return;
+                           try {
+                             const b64 = await resizeImage(file);
+                             setEditThumbnail(b64);
+                           } catch(err) { console.error(err); alert("이미지 처리 중 오류가 발생했습니다."); }
+                         }} />
+                       </div>
+                       {editThumbnail && (
+                         <div style={{ position: "relative", width: 44, height: 44, borderRadius: 8, overflow: "hidden", flexShrink: 0, marginTop: 18, border: "1px solid #e2e8f0" }}>
+                           <img src={editThumbnail} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="prev" />
+                           <div onClick={() => setEditThumbnail("")} style={{ position: "absolute", top: 0, right: 0, background: "rgba(0,0,0,0.6)", color: "white", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 10, borderBottomLeftRadius: 4 }}>X</div>
+                         </div>
+                       )}
                     </div>
-                    <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginTop:12, display:"block" }}>배경 CSS (그라데이션 등)</label>
-                    <input className="edit-input" value={editBg} onChange={e => setEditBg(e.target.value)} placeholder="linear-gradient(...)" />
                   </div>
                 )}
               </div>
