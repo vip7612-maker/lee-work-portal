@@ -153,7 +153,8 @@ export default function Portal() {
     api.fetchJSON(`/api/comments?pid=${activeId}`).then(setMemos).catch(() => {});
     api.fetchJSON(`/api/viewport-tabs?pid=${activeId}`).then((rows: VpTab[]) => {
       setVpTabs(rows || []);
-      setActiveVpTabId(rows && rows.length > 0 ? rows[0].id : null);
+      // 항상 가장 좌측 탭(null)이 기본으로 열리도록 설정 변경
+      setActiveVpTabId(null);
     }).catch(() => {});
   }, [activeId, session]);
 
