@@ -1,6 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import * as LucideIcons from "lucide-react";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 type AgentFeature = {
   id: string;
@@ -320,7 +323,14 @@ export default function AaronAIGallery() {
                       {editDesc}
                     </div>
                     <div style={{ width: "100%", height: 1, background: "#e2e8f0", marginBottom: 24 }} />
-                    <div className="setup-guide" dangerouslySetInnerHTML={{ __html: editGuide }} />
+                    <div className="setup-guide markdown-body">
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]} 
+                        rehypePlugins={[rehypeRaw]}
+                      >
+                        {editGuide}
+                      </ReactMarkdown>
+                    </div>
                   </>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -365,6 +375,13 @@ export default function AaronAIGallery() {
             transition: border-color 0.2s;
           }
           .edit-input:focus { border-color: #0ea5e9; }
+          .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 { font-weight:600; color:#1e293b; margin:24px 0 12px; }
+          .markdown-body p { margin-bottom:12px; line-height:1.6; }
+          .markdown-body ul, .markdown-body ol { padding-left:24px; margin-bottom:16px; display:flex; flex-direction:column; gap:6px; }
+          .markdown-body li { margin-bottom: 4px; }
+          .markdown-body code { background:#f1f5f9; padding:3px 6px; border-radius:6px; font-size:0.85em; }
+          .markdown-body pre { background:#f1f5f9; padding:16px; border-radius:8px; overflow-x:auto; margin-bottom:16px; }
+          .markdown-body pre code { background:transparent; padding:0; }
           .setup-guide h4 { font-weight:600; color:#1e293b; margin:16px 0 8px; }
           .setup-guide p { margin-bottom:12px; }
           .setup-guide ul, .setup-guide ol { padding-left:20px; margin-bottom:16px; display:flex; flex-direction:column; gap:6px; }
