@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     const data = await req.json();
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     await db.execute({
-      sql: 'INSERT INTO aaron_features (id, icon, bgGrad, title, description, setupGuide, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      sql: 'INSERT INTO aaron_features (id, icon, bgGrad, title, description, setupGuide, sort_order, thumbnail) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       args: [
         id, 
         data.icon || 'Bot', 
@@ -25,7 +25,8 @@ export async function POST(req: Request) {
         data.title || '새 기능', 
         data.description || '이 기능에 대한 설명입니다.', 
         data.setupGuide || '<p>설정 가이드를 작성하세요.</p>', 
-        data.sort_order || 999
+        data.sort_order || 999,
+        data.thumbnail || ''
       ]
     });
     return NextResponse.json({ success: true, id });
@@ -48,6 +49,7 @@ export async function PUT(req: Request) {
     if (data.description !== undefined) { fields.push('description = ?'); args.push(data.description); }
     if (data.setupGuide !== undefined) { fields.push('setupGuide = ?'); args.push(data.setupGuide); }
     if (data.sort_order !== undefined) { fields.push('sort_order = ?'); args.push(data.sort_order); }
+    if (data.thumbnail !== undefined) { fields.push('thumbnail = ?'); args.push(data.thumbnail); }
 
     if (fields.length === 0) return NextResponse.json({ success: true }); // Nothing to update
 

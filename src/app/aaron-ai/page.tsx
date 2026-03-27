@@ -13,11 +13,40 @@ type AgentFeature = {
   description: string;
   setupGuide: string;
   sort_order: number;
+  thumbnail?: string;
 };
 
 const renderIcon = (name: string, props: any) => {
   const Icon = (LucideIcons as any)[name] || LucideIcons.Bot;
   return <Icon {...props} />;
+};
+
+const resizeImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX = 400; 
+        let width = img.width, height = img.height;
+        if (width > height) {
+          if (width > MAX) { height *= MAX / width; width = MAX; }
+        } else {
+          if (height > MAX) { width *= MAX / height; height = MAX; }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 };
 
 export default function AaronAIGallery() {
@@ -32,6 +61,7 @@ export default function AaronAIGallery() {
   const [editDesc, setEditDesc] = useState("");
   const [editIcon, setEditIcon] = useState("");
   const [editBg, setEditBg] = useState("");
+  const [editThumbnail, setEditThumbnail] = useState("");
   const [editGuide, setEditGuide] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -70,6 +100,7 @@ export default function AaronAIGallery() {
     setEditDesc(feat.description);
     setEditIcon(feat.icon);
     setEditBg(feat.bgGrad);
+    setEditThumbnail(feat.thumbnail || "");
     setEditGuide(feat.setupGuide);
   };
 
@@ -80,7 +111,8 @@ export default function AaronAIGallery() {
       bgGrad: "linear-gradient(135deg, #cbd5e1, #94a3b8)",
       description: "기능에 대한 간략한 설명을 적어주세요.",
       setupGuide: "<p>여기에 HTML 설정 가이드를 작성하세요.</p>",
-      sort_order: features.length + 1
+      sort_order: features.length + 1,
+      thumbnail: ""
     };
     setIsSaving(true);
     try {
@@ -115,6 +147,7 @@ export default function AaronAIGallery() {
           description: editDesc,
           icon: editIcon,
           bgGrad: editBg,
+          thumbnail: editThumbnail,
           setupGuide: editGuide
         })
       });
@@ -125,6 +158,7 @@ export default function AaronAIGallery() {
         description: editDesc,
         icon: editIcon,
         bgGrad: editBg,
+        thumbnail: editThumbnail,
         setupGuide: editGuide
       } : f));
       
@@ -135,6 +169,7 @@ export default function AaronAIGallery() {
         description: editDesc,
         icon: editIcon,
         bgGrad: editBg,
+        thumbnail: editThumbnail,
         setupGuide: editGuide
       } : null);
       
@@ -225,8 +260,11 @@ export default function AaronAIGallery() {
                 e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.03)";
               }}
             >
-              <div style={{ height: 100, background: feat.bgGrad, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {renderIcon(feat.icon, { size: 36, color: "white", opacity: 0.9 })}
+              <div style={{ height: 100, background: feat.thumbnail ? "transparent" : feat.bgGrad, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                {feat.thumbnail 
+                  ? <img src={feat.thumbnail} alt="thumb" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : renderIcon(feat.icon, { size: 36, color: "white", opacity: 0.9 })
+                }
               </div>
               <div style={{ padding: "16px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
                 <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#1e293b", marginBottom: 8, lineHeight: 1.3 }}>{feat.title}</h3>
@@ -280,7 +318,7 @@ export default function AaronAIGallery() {
             >
               {/* Modal Header */}
               <div style={{ 
-                height: 120, background: isEditing ? "#e2e8f0" : editBg, padding: "24px 32px 0",
+                minHeight: 120, background: isEditing ? "#e2e8f0" : editBg, padding: "24px 32px 0",
                 display: "flex", alignItems: "flex-end", position: "relative",
                 transition: "background 0.3s"
               }}>
@@ -296,17 +334,45 @@ export default function AaronAIGallery() {
                 
                 {!isEditing ? (
                   <div style={{ 
-                    background: "white", width: 64, height: 64, borderRadius: 16,
-                    display: "flex", alignItems: "center", justifyContent: "center",
+                    background: editThumbnail ? "black" : "white", width: 64, height: 64, borderRadius: 16,
+                    display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden",
                     transform: "translateY(20px)", boxShadow: "0 8px 16px rgba(0,0,0,0.1)"
                   }}>
-                    {renderIcon(editIcon, { size: 32, color: editBg.split(',')[1]?.trim() || "#333" })}
+                    {editThumbnail 
+                      ? <img src={editThumbnail} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="thumb" />
+                      : renderIcon(editIcon, { size: 32, color: editBg.split(',')[1]?.trim() || "#333" })
+                    }
                   </div>
                 ) : (
                   <div style={{ width: "100%", marginBottom: 12 }}>
-                    <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b" }}>아이콘 이름 (Lucide)</label>
-                    <input className="edit-input" value={editIcon} onChange={e => setEditIcon(e.target.value)} placeholder="Bot, Smartphone 등..." />
-                    <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginTop:8, display:"block" }}>배경 CSS (그라데이션 등)</label>
+                    <div style={{ display: "flex", gap: 16, alignItems: "flex-end" }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginBottom: 4, display: "block" }}>아이콘 이름 (Lucide)</label>
+                        <input className="edit-input" value={editIcon} onChange={e => setEditIcon(e.target.value)} placeholder="Bot, Smartphone 등..." />
+                      </div>
+                      <div style={{ flex: 1.5 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                           <div style={{ flex: 1 }}>
+                             <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginBottom: 4, display: "block" }}>썸네일 이미지 파일 (아이콘 대체)</label>
+                             <input type="file" accept="image/*" className="edit-input" style={{ padding: "4px 8px" }} onChange={async e => {
+                               const file = e.target.files?.[0];
+                               if(!file) return;
+                               try {
+                                 const b64 = await resizeImage(file);
+                                 setEditThumbnail(b64);
+                               } catch(err) { console.error(err); alert("이미지 처리 중 오류가 발생했습니다."); }
+                             }} />
+                           </div>
+                           {editThumbnail && (
+                             <div style={{ position: "relative", width: 36, height: 36, borderRadius: 8, overflow: "hidden", flexShrink: 0, marginTop: 18 }}>
+                               <img src={editThumbnail} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="prev" />
+                               <div onClick={() => setEditThumbnail("")} style={{ position: "absolute", top: 0, right: 0, background: "rgba(0,0,0,0.6)", color: "white", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 10, borderBottomLeftRadius: 4 }}>X</div>
+                             </div>
+                           )}
+                        </div>
+                      </div>
+                    </div>
+                    <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginTop:12, display:"block" }}>배경 CSS (그라데이션 등)</label>
                     <input className="edit-input" value={editBg} onChange={e => setEditBg(e.target.value)} placeholder="linear-gradient(...)" />
                   </div>
                 )}
