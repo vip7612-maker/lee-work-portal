@@ -526,7 +526,7 @@ export default function Portal() {
       <div className="rp">
         <div className="rp__header">
           <div className="rp__title" style={{ fontWeight: 700, fontSize: ".9rem", color: "var(--ink)", display: "flex", alignItems: "center" }}>
-            {active?.label || ''}
+            {isDashboard ? '📊 대시보드' : isAppStore ? '🚀 App Store' : isAaronAi ? '🤖 아론 AI비서' : active?.label || ''}
           </div>
           <div style={{ display:"flex", gap:10 }}>
             <X size={15} style={{ cursor:"pointer" }} onClick={() => setPanelOpen(false)}/>
