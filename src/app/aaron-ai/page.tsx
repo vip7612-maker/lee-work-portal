@@ -20,6 +20,7 @@ type AgentFeature = {
   category: string;
   app_number: string;
   keywords: string;
+  badge_color?: string;
 };
 
 const renderIcon = (name: string, props: any) => {
@@ -55,6 +56,33 @@ const resizeImage = (file: File): Promise<string> => {
   });
 };
 
+const generateKeywords = (title: string, desc: string, guide: string) => {
+  const text = `${title} ${desc} ${guide.replace(/<[^>]*>?/gm, ' ')}`;
+  const words = text
+    .split(/[\s,.'":;!?()-]+/)
+    .filter(w => w.length > 1 && !/^[0-9]+$/.test(w));
+
+  const stopwords = [
+    '있습니다', '합니다', '입니다', '하는', '있는', '위한', '대해', '대한',
+    '설명을', '작성하세요', '여기에', '이', '그', '저', '수', '것', '들',
+    '및', '등', '또는', '그리고', '하지만', '만약'
+  ];
+
+  const freqs: Record<string, number> = {};
+  for (const w of words) {
+    if (!stopwords.includes(w)) {
+      freqs[w] = (freqs[w] || 0) + 1;
+    }
+  }
+
+  const topWords = Object.entries(freqs)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([w]) => w);
+    
+  return topWords.join(', ');
+};
+
 function SortableFeatureCard({ feat, onClick }: { feat: AgentFeature, onClick: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: feat.id });
   
@@ -65,7 +93,11 @@ function SortableFeatureCard({ feat, onClick }: { feat: AgentFeature, onClick: (
     opacity: isDragging ? 0.6 : 1,
   };
 
-  const keywordsArray = feat.keywords.split(',').map(k => k.trim()).filter(k => k.length > 0);
+  let keywordsArray = (feat.keywords || '').split(',').map(k => k.trim()).filter(k => k.length > 0);
+  if (keywordsArray.length === 0) {
+    keywordsArray = generateKeywords(feat.title || '', feat.description || '', feat.setupGuide || '').split(',').map(k => k.trim()).filter(k => k.length > 0);
+  }
+  const badgeBg = feat.badge_color || "#0f172a";
 
   return (
     <div 
@@ -75,9 +107,9 @@ function SortableFeatureCard({ feat, onClick }: { feat: AgentFeature, onClick: (
     >
       <div style={{ height: 110, background: feat.thumbnail ? "transparent" : feat.bgGrad, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", pointerEvents: "none", position: "relative" }}>
         
-        {/* 앱 번호 뱃지 */}
+        {/* 앱 번호 뱃지 (색상 연동) */}
         {feat.app_number && (
-          <div style={{ position: "absolute", top: 8, left: 8, background: "rgba(15, 23, 42, 0.85)", color: "white", padding: "2px 8px", borderRadius: 12, fontSize: "0.75rem", fontWeight: 700, zIndex: 5, letterSpacing: '0.05em', border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(4px)" }}>
+          <div style={{ position: "absolute", top: 8, left: 8, background: badgeBg, color: "white", padding: "2px 8px", borderRadius: 12, fontSize: "0.75rem", fontWeight: 700, zIndex: 5, letterSpacing: '0.05em', border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(4px)" }}>
             {feat.app_number.toUpperCase()}
           </div>
         )}
@@ -106,6 +138,14 @@ function SortableFeatureCard({ feat, onClick }: { feat: AgentFeature, onClick: (
   );
 }
 
+const BADGE_COLORS = [
+  { hex: "#0f172a", name: "옵시디언 블랙" },
+  { hex: "#0ea5e9", name: "스카이 블루" },
+  { hex: "#e11d48", name: "루비 레드" },
+  { hex: "#10b981", name: "에메랄드 그린" },
+  { hex: "#8b5cf6", name: "아메시스트 퍼플" }
+];
+
 export default function AaronAIGallery() {
   const [features, setFeatures] = useState<AgentFeature[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,6 +164,7 @@ export default function AaronAIGallery() {
   const [editCategory, setEditCategory] = useState("필수");
   const [editAppNumber, setEditAppNumber] = useState("");
   const [editKeywords, setEditKeywords] = useState("");
+  const [editBadgeColor, setEditBadgeColor] = useState("#0f172a");
   
   const [isSaving, setIsSaving] = useState(false);
 
@@ -194,7 +235,10 @@ export default function AaronAIGallery() {
     setEditGuide(feat.setupGuide);
     setEditCategory(feat.category || "필수");
     setEditAppNumber(feat.app_number || "");
-    setEditKeywords(feat.keywords || "");
+    let kws = (feat.keywords || "").trim();
+    if (!kws) kws = generateKeywords(feat.title || "", feat.description || "", feat.setupGuide || "");
+    setEditKeywords(kws);
+    setEditBadgeColor(feat.badge_color || "#0f172a");
   };
 
   const handleAddNew = async () => {
@@ -208,7 +252,8 @@ export default function AaronAIGallery() {
       thumbnail: "",
       category: "필수",
       app_number: "",
-      keywords: "키워드1, 키워드2"
+      keywords: "",
+      badge_color: "#0ea5e9"
     };
     setIsSaving(true);
     try {
@@ -234,6 +279,10 @@ export default function AaronAIGallery() {
   const handleSave = async () => {
     if (!selectedFeature) return;
     setIsSaving(true);
+    
+    // Auto-generate keywords
+    const autoKeywords = generateKeywords(editTitle, editDesc, editGuide);
+
     try {
       await fetch('/api/aaron-features', {
         method: 'PUT',
@@ -247,7 +296,8 @@ export default function AaronAIGallery() {
           setupGuide: editGuide,
           category: editCategory,
           app_number: editAppNumber,
-          keywords: editKeywords
+          keywords: autoKeywords,
+          badge_color: editBadgeColor
         })
       });
       // Refresh local state
@@ -261,7 +311,8 @@ export default function AaronAIGallery() {
         setupGuide: editGuide,
         category: editCategory,
         app_number: editAppNumber,
-        keywords: editKeywords
+        keywords: autoKeywords,
+        badge_color: editBadgeColor
       } : f));
       
       // Update selected modal view details, and exit editing
@@ -275,7 +326,8 @@ export default function AaronAIGallery() {
         setupGuide: editGuide,
         category: editCategory,
         app_number: editAppNumber,
-        keywords: editKeywords
+        keywords: autoKeywords,
+        badge_color: editBadgeColor
       } : null);
       
       setIsEditing(false);
@@ -313,24 +365,29 @@ export default function AaronAIGallery() {
 
   const renderCategorySection = (catTitle: string, emoji: string, catValue: string) => {
     const list = features.filter(f => (f.category || '필수') === catValue);
-    if (!list || list.length === 0) return null; // 빈 카테고리는 가림
     
     return (
       <div key={catValue} style={{ margin: "50px 0 20px" }}>
         <h2 style={{ fontSize: "1.3rem", fontWeight: 700, color: "#1e293b", marginBottom: 20, display: "flex", alignItems: "center", gap: 10, borderBottom: "2px solid #e2e8f0", paddingBottom: 12 }}>
           <span>{emoji}</span> {catTitle}
         </h2>
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-          gap: 20,
-        }}>
-          <SortableContext items={list.map(f => f.id)} strategy={rectSortingStrategy}>
-            {list.map((feat) => (
-              <SortableFeatureCard key={feat.id} feat={feat} onClick={() => handleOpenModal(feat)} />
-            ))}
-          </SortableContext>
-        </div>
+        {list.length === 0 ? (
+          <div style={{ padding: "40px", textAlign: "center", color: "#94a3b8", background: "rgba(255,255,255,0.4)", borderRadius: 16, border: "1px dashed #cbd5e1" }}>
+            아직 추가된 항목이 없습니다.
+          </div>
+        ) : (
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+            gap: 20,
+          }}>
+            <SortableContext items={list.map(f => f.id)} strategy={rectSortingStrategy}>
+              {list.map((feat) => (
+                <SortableFeatureCard key={feat.id} feat={feat} onClick={() => handleOpenModal(feat)} />
+              ))}
+            </SortableContext>
+          </div>
+        )}
       </div>
     );
   };
@@ -396,7 +453,6 @@ export default function AaronAIGallery() {
           </div>
         </div>
 
-
         {/* Feature Modal */}
         {selectedFeature && (
           <div 
@@ -422,7 +478,7 @@ export default function AaronAIGallery() {
                 display: "flex", alignItems: "flex-end", position: "relative",
                 transition: "background 0.3s"
               }}>
-                <div style={{ position: "absolute", top: 16, right: 16, display: "flex", gap: 8 }}>
+                <div style={{ position: "absolute", top: 16, right: 16, display: "flex", gap: 8, zIndex: 10 }}>
                   {!isEditing && (
                     <>
                       <button onClick={() => setIsEditing(true)} style={{ background: "rgba(255,255,255,0.25)", color: "white", border: "none", width: 32, height: 32, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><LucideIcons.Edit2 size={15}/></button>
@@ -439,7 +495,7 @@ export default function AaronAIGallery() {
                     transform: "translateY(20px)", boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
                     position: "relative"
                   }}>
-                    {editAppNumber && !editThumbnail && <div style={{ position: "absolute", top: -8, left: -8, background: "#0f172a", color: "white", padding: "2px 6px", borderRadius: 8, fontSize: "8px", fontWeight:"bold" }}>{editAppNumber}</div>}
+                    {editAppNumber && !editThumbnail && <div style={{ position: "absolute", top: -8, left: -8, background: editBadgeColor, color: "white", padding: "2px 6px", borderRadius: 8, fontSize: "8px", fontWeight:"bold" }}>{editAppNumber}</div>}
                     {editThumbnail 
                       ? <img src={editThumbnail} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="thumb" />
                       : renderIcon(editIcon, { size: 32, color: editBg.split(',')[1]?.trim() || "#333" })
@@ -449,30 +505,52 @@ export default function AaronAIGallery() {
                   <div style={{ width: "100%", marginBottom: 12 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                        <div style={{ flex: 1 }}>
-                         <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginBottom: 4, display: "block" }}>[카테고리] 소속 그룹</label>
+                         <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginBottom: 4, display: "block" }}>[소속 카테고리]</label>
                          <select className="edit-input" value={editCategory} onChange={e => setEditCategory(e.target.value)} style={{ padding: "6px 8px", cursor: "pointer" }}>
-                            <option value="필수">🔥 필수 앱 (Essential)</option>
-                            <option value="옵션">✨ 옵션 앱 (Optional)</option>
-                            <option value="개발중">🛠️ 개발 중 (In Dev)</option>
+                            <option value="필수">🔥 필수 앱</option>
+                            <option value="옵션">✨ 옵션 앱</option>
+                            <option value="개발중">🛠️ 개발 중</option>
                          </select>
                        </div>
                        <div style={{ flex: 1 }}>
-                         <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginBottom: 4, display: "block" }}>썸네일 이미지 파일 업로드</label>
+                         <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginBottom: 4, display: "block" }}>썸네일 이미지 업로드</label>
                          <input type="file" accept="image/*" className="edit-input" style={{ padding: "4px 8px" }} onChange={async e => {
                            const file = e.target.files?.[0];
                            if(!file) return;
                            try {
                              const b64 = await resizeImage(file);
                              setEditThumbnail(b64);
-                           } catch(err) { console.error(err); alert("이미지 처리 중 오류가 발생했습니다."); }
+                           } catch(err) { console.error(err); alert("이미지 오류."); }
                          }} />
                        </div>
                        <div style={{ flex: 0.8 }}>
                          <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginBottom: 4, display: "block" }}>앱 번호 (3자리)</label>
-                         <input className="edit-input" value={editAppNumber} maxLength={3} onChange={e => setEditAppNumber(e.target.value)} placeholder="001, A1 ..." style={{ padding: "6px 8px", fontWeight: "bold" }} />
+                         <input className="edit-input" value={editAppNumber} maxLength={3} onChange={e => setEditAppNumber(e.target.value)} placeholder="001..." style={{ padding: "6px 8px", fontWeight: "bold" }} />
                        </div>
+                    </div>
+                    
+                    {/* Color Picker Row */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
+                       <div style={{ flex: 1.5 }}>
+                         <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginBottom: 6, display: "block" }}>뱃지 색상 선택</label>
+                         <div style={{ display: "flex", gap: 10 }}>
+                           {BADGE_COLORS.map(c => (
+                             <div 
+                               key={c.hex} title={c.name}
+                               onClick={() => setEditBadgeColor(c.hex)} 
+                               style={{ 
+                                 width: 24, height: 24, borderRadius: 12, background: c.hex, 
+                                 border: editBadgeColor === c.hex ? "2px solid #334155" : "2px solid rgba(255,255,255,0.5)", 
+                                 cursor: "pointer", boxShadow: editBadgeColor === c.hex ? "0 0 0 2px white inset, 0 4px 6px rgba(0,0,0,0.1)" : "0 2px 4px rgba(0,0,0,0.05)",
+                                 transition: "all 0.2s"
+                               }} 
+                             />
+                           ))}
+                         </div>
+                       </div>
+                       
                        {editThumbnail && (
-                         <div style={{ position: "relative", width: 44, height: 44, borderRadius: 8, overflow: "hidden", flexShrink: 0, marginTop: 18, border: "1px solid #e2e8f0" }}>
+                         <div style={{ position: "relative", width: 44, height: 44, borderRadius: 8, overflow: "hidden", flexShrink: 0, border: "1px solid #e2e8f0" }}>
                            <img src={editThumbnail} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="prev" />
                            <div onClick={() => setEditThumbnail("")} style={{ position: "absolute", top: 0, right: 0, background: "rgba(0,0,0,0.6)", color: "white", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 10, borderBottomLeftRadius: 4 }}>X</div>
                          </div>
@@ -490,7 +568,7 @@ export default function AaronAIGallery() {
                       <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", marginBottom: 10, letterSpacing: "-0.02em" }}>
                         {editTitle}
                       </h2>
-                      {editAppNumber && <span style={{ background: "#e2e8f0", color: "#334155", padding: "4px 10px", borderRadius: 16, fontSize: "0.8rem", fontWeight: "bold" }}>No. {editAppNumber}</span>}
+                      {editAppNumber && <span style={{ background: editBadgeColor, color: "white", padding: "4px 10px", borderRadius: 16, fontSize: "0.8rem", fontWeight: "bold", border: "1px solid rgba(255,255,255,0.2)" }}>No. {editAppNumber.toUpperCase()}</span>}
                     </div>
                     {editKeywords && (
                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
@@ -518,10 +596,7 @@ export default function AaronAIGallery() {
                       <label style={{ fontSize:"0.8rem", fontWeight:600, color:"#475569", marginBottom:4, display:"block" }}>타이틀</label>
                       <input className="edit-input" value={editTitle} onChange={e => setEditTitle(e.target.value)} style={{ padding:10, fontSize:"1.1rem" }} />
                     </div>
-                    <div>
-                      <label style={{ fontSize:"0.8rem", fontWeight:600, color:"#475569", marginBottom:4, display:"block" }}>핵심 키워드 3~5개 콤마(,) 구분 입력</label>
-                      <input className="edit-input" value={editKeywords} onChange={e => setEditKeywords(e.target.value)} placeholder="자동화, 연동, 텔레그램" style={{ padding:10 }} />
-                    </div>
+                    {/* 키워드 자동 추출: 수동 입력 필드 제거 */}
                     <div>
                       <label style={{ fontSize:"0.8rem", fontWeight:600, color:"#475569", marginBottom:4, display:"block" }}>카드 상세 설명 (썸네일 설명)</label>
                       <textarea className="edit-input" value={editDesc} onChange={e => setEditDesc(e.target.value)} style={{ minHeight: 80, padding:10 }} />

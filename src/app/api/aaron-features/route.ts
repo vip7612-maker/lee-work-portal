@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     const data = await req.json();
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     await db.execute({
-      sql: 'INSERT INTO aaron_features (id, icon, bgGrad, title, description, setupGuide, sort_order, thumbnail, category, app_number, keywords) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      sql: 'INSERT INTO aaron_features (id, icon, bgGrad, title, description, setupGuide, sort_order, thumbnail, category, app_number, keywords, badge_color) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       args: [
         id, 
         data.icon || 'Bot', 
@@ -29,7 +29,8 @@ export async function POST(req: Request) {
         data.thumbnail || '',
         data.category || '필수',
         data.app_number || '',
-        data.keywords || ''
+        data.keywords || '',
+        data.badge_color || '#0f172a'
       ]
     });
     return NextResponse.json({ success: true, id });
@@ -56,6 +57,7 @@ export async function PUT(req: Request) {
     if (data.category !== undefined) { fields.push('category = ?'); args.push(data.category); }
     if (data.app_number !== undefined) { fields.push('app_number = ?'); args.push(data.app_number); }
     if (data.keywords !== undefined) { fields.push('keywords = ?'); args.push(data.keywords); }
+    if (data.badge_color !== undefined) { fields.push('badge_color = ?'); args.push(data.badge_color); }
 
     if (fields.length === 0) return NextResponse.json({ success: true }); // Nothing to update
 
