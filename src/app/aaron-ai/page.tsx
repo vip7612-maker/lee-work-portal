@@ -17,6 +17,9 @@ type AgentFeature = {
   setupGuide: string;
   sort_order: number;
   thumbnail?: string;
+  category: string;
+  app_number: string;
+  keywords: string;
 };
 
 const renderIcon = (name: string, props: any) => {
@@ -62,21 +65,42 @@ function SortableFeatureCard({ feat, onClick }: { feat: AgentFeature, onClick: (
     opacity: isDragging ? 0.6 : 1,
   };
 
+  const keywordsArray = feat.keywords.split(',').map(k => k.trim()).filter(k => k.length > 0);
+
   return (
     <div 
       ref={setNodeRef} style={style} {...attributes} {...listeners}
       onClick={onClick}
       className={`feature-card ${isDragging ? 'dragging' : ''}`}
     >
-      <div style={{ height: 100, background: feat.thumbnail ? "transparent" : feat.bgGrad, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", pointerEvents: "none" }}>
+      <div style={{ height: 110, background: feat.thumbnail ? "transparent" : feat.bgGrad, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", pointerEvents: "none", position: "relative" }}>
+        
+        {/* 앱 번호 뱃지 */}
+        {feat.app_number && (
+          <div style={{ position: "absolute", top: 8, left: 8, background: "rgba(15, 23, 42, 0.85)", color: "white", padding: "2px 8px", borderRadius: 12, fontSize: "0.75rem", fontWeight: 700, zIndex: 5, letterSpacing: '0.05em', border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(4px)" }}>
+            {feat.app_number.toUpperCase()}
+          </div>
+        )}
+
         {feat.thumbnail 
           ? <img src={feat.thumbnail} alt="thumb" style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }} />
           : renderIcon(feat.icon, { size: 36, color: "white", opacity: 0.9 })
         }
       </div>
-      <div style={{ padding: "16px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
+      <div style={{ padding: "16px 20px 18px", flex: 1, display: "flex", flexDirection: "column" }}>
         <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#1e293b", marginBottom: 8, lineHeight: 1.3 }}>{feat.title}</h3>
-        <p style={{ fontSize: "0.82rem", color: "#64748b", lineHeight: 1.5, flex: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" }}>{feat.description}</p>
+        <p style={{ fontSize: "0.82rem", color: "#64748b", lineHeight: 1.5, flex: 1, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", marginBottom: 12 }}>{feat.description}</p>
+        
+        {/* 키워드 뱃지 */}
+        {keywordsArray.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {keywordsArray.slice(0, 5).map((kw, i) => (
+              <span key={i} style={{ background: "#f1f5f9", color: "#475569", padding: "3px 8px", borderRadius: 6, fontSize: "0.7rem", fontWeight: 600 }}>
+                {kw}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -96,6 +120,11 @@ export default function AaronAIGallery() {
   const [editBg, setEditBg] = useState("");
   const [editThumbnail, setEditThumbnail] = useState("");
   const [editGuide, setEditGuide] = useState("");
+  
+  const [editCategory, setEditCategory] = useState("필수");
+  const [editAppNumber, setEditAppNumber] = useState("");
+  const [editKeywords, setEditKeywords] = useState("");
+  
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -163,6 +192,9 @@ export default function AaronAIGallery() {
     setEditBg(feat.bgGrad);
     setEditThumbnail(feat.thumbnail || "");
     setEditGuide(feat.setupGuide);
+    setEditCategory(feat.category || "필수");
+    setEditAppNumber(feat.app_number || "");
+    setEditKeywords(feat.keywords || "");
   };
 
   const handleAddNew = async () => {
@@ -173,7 +205,10 @@ export default function AaronAIGallery() {
       description: "기능에 대한 간략한 설명을 적어주세요.",
       setupGuide: "<p>여기에 HTML 설정 가이드를 작성하세요.</p>",
       sort_order: features.length + 1,
-      thumbnail: ""
+      thumbnail: "",
+      category: "필수",
+      app_number: "",
+      keywords: "키워드1, 키워드2"
     };
     setIsSaving(true);
     try {
@@ -209,7 +244,10 @@ export default function AaronAIGallery() {
           icon: editIcon,
           bgGrad: editBg,
           thumbnail: editThumbnail,
-          setupGuide: editGuide
+          setupGuide: editGuide,
+          category: editCategory,
+          app_number: editAppNumber,
+          keywords: editKeywords
         })
       });
       // Refresh local state
@@ -220,7 +258,10 @@ export default function AaronAIGallery() {
         icon: editIcon,
         bgGrad: editBg,
         thumbnail: editThumbnail,
-        setupGuide: editGuide
+        setupGuide: editGuide,
+        category: editCategory,
+        app_number: editAppNumber,
+        keywords: editKeywords
       } : f));
       
       // Update selected modal view details, and exit editing
@@ -231,7 +272,10 @@ export default function AaronAIGallery() {
         icon: editIcon,
         bgGrad: editBg,
         thumbnail: editThumbnail,
-        setupGuide: editGuide
+        setupGuide: editGuide,
+        category: editCategory,
+        app_number: editAppNumber,
+        keywords: editKeywords
       } : null);
       
       setIsEditing(false);
@@ -267,18 +311,42 @@ export default function AaronAIGallery() {
     return <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", color: "#64748b" }}>데이터를 불러오는 중...</div>;
   }
 
+  const renderCategorySection = (catTitle: string, emoji: string, catValue: string) => {
+    const list = features.filter(f => (f.category || '필수') === catValue);
+    if (!list || list.length === 0) return null; // 빈 카테고리는 가림
+    
+    return (
+      <div key={catValue} style={{ margin: "50px 0 20px" }}>
+        <h2 style={{ fontSize: "1.3rem", fontWeight: 700, color: "#1e293b", marginBottom: 20, display: "flex", alignItems: "center", gap: 10, borderBottom: "2px solid #e2e8f0", paddingBottom: 12 }}>
+          <span>{emoji}</span> {catTitle}
+        </h2>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+          gap: 20,
+        }}>
+          <SortableContext items={list.map(f => f.id)} strategy={rectSortingStrategy}>
+            {list.map((feat) => (
+              <SortableFeatureCard key={feat.id} feat={feat} onClick={() => handleOpenModal(feat)} />
+            ))}
+          </SortableContext>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{
       minHeight: "100vh",
       background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
-      padding: "32px 24px",
+      padding: "50px 24px",
       fontFamily: "'DM Sans', system-ui, sans-serif",
       position: "relative"
     }}>
       <div style={{ maxWidth: 1024, margin: "0 auto" }}>
         
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
+        <div style={{ textAlign: "center", marginBottom: 30 }}>
           <div style={{ 
             display: "inline-flex", alignItems: "center", justifyContent: "center",
             width: 56, height: 56, borderRadius: 16, 
@@ -288,51 +356,46 @@ export default function AaronAIGallery() {
           }}>
             <LucideIcons.Bot size={32}/>
           </div>
-          <h1 style={{ fontSize: "2.2rem", fontWeight: 700, color: "#0f172a", letterSpacing: "-0.03em", marginBottom: 12 }}>
+          <h1 style={{ fontSize: "2.5rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.04em", marginBottom: 12 }}>
             Aaron Agent <span style={{ color: "#0ea5e9" }}>Gallery</span>
           </h1>
-          <p style={{ color: "#64748b", fontSize: "1rem", fontWeight: 500, maxWidth: 580, margin: "0 auto", lineHeight: 1.6 }}>
-            아론(Aaron) AI 비서의 다양한 기능을 직접 편집하고 관리해 보세요. 카드를 잡아 끌어(Drag) 순서를 바꿀 수 있습니다.
+          <p style={{ color: "#64748b", fontSize: "1.05rem", fontWeight: 500, maxWidth: 580, margin: "0 auto", lineHeight: 1.6 }}>
+            아론(Aaron) AI 비서의 다양한 기능을 직접 편집하고 관리해 보세요. 카드를 잡아 끌어(Drag) 구역 내 순서를 바꿀 수 있습니다.
           </p>
         </div>
-
-        {/* Gallery Grid - smaller cards */}
+        
+        {/* Gallery Grid Sections */}
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-            gap: 20,
-          }}>
-            <SortableContext items={features.map(f => f.id)} strategy={rectSortingStrategy}>
-              {features.map((feat) => (
-                <SortableFeatureCard key={feat.id} feat={feat} onClick={() => handleOpenModal(feat)} />
-              ))}
-            </SortableContext>
-
-            {/* ADD NEW CARD */}
-            <div 
-              onClick={handleAddNew}
-              style={{
-                background: "rgba(255,255,255,0.4)", border: "2px dashed #cbd5e1", borderRadius: 16,
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                cursor: "pointer", transition: "all 0.2s", minHeight: 200, color: "#94a3b8"
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = "rgba(255,255,255,0.8)";
-                e.currentTarget.style.borderColor = "#94a3b8";
-                e.currentTarget.style.color = "#64748b";
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = "rgba(255,255,255,0.4)";
-                e.currentTarget.style.borderColor = "#cbd5e1";
-                e.currentTarget.style.color = "#94a3b8";
-              }}
-            >
-              {isSaving ? <LucideIcons.Loader2 className="spin" size={32} /> : <LucideIcons.PlusCircle size={36} />}
-              <span style={{ marginTop: 12, fontWeight: 600, fontSize: "0.95rem" }}>새 기능 추가</span>
-            </div>
-          </div>
+          {renderCategorySection("필수 앱 (Essential)", "🔥", "필수")}
+          {renderCategorySection("옵션 기능 (Optional)", "✨", "옵션")}
+          {renderCategorySection("개발 중... (In Dev)", "🛠️", "개발중")}
         </DndContext>
+
+        {/* ADD NEW CARD - 항상 하단에 단독 배치 */}
+        <div style={{ margin: "50px 0 20px" }}>
+          <div 
+            onClick={handleAddNew}
+            style={{
+              background: "rgba(255,255,255,0.4)", border: "2px dashed #cbd5e1", borderRadius: 16,
+              display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", transition: "all 0.2s", minHeight: 180, color: "#94a3b8"
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = "rgba(255,255,255,0.8)";
+              e.currentTarget.style.borderColor = "#94a3b8";
+              e.currentTarget.style.color = "#64748b";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "rgba(255,255,255,0.4)";
+              e.currentTarget.style.borderColor = "#cbd5e1";
+              e.currentTarget.style.color = "#94a3b8";
+            }}
+          >
+            {isSaving ? <LucideIcons.Loader2 className="spin" size={32} /> : <LucideIcons.PlusCircle size={36} />}
+            <span style={{ marginTop: 12, fontWeight: 600, fontSize: "0.95rem" }}>새 기능 추가 (+)</span>
+          </div>
+        </div>
+
 
         {/* Feature Modal */}
         {selectedFeature && (
@@ -373,8 +436,10 @@ export default function AaronAIGallery() {
                   <div style={{ 
                     background: editThumbnail ? "black" : "white", width: 64, height: 64, borderRadius: 16,
                     display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden",
-                    transform: "translateY(20px)", boxShadow: "0 8px 16px rgba(0,0,0,0.1)"
+                    transform: "translateY(20px)", boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
+                    position: "relative"
                   }}>
+                    {editAppNumber && !editThumbnail && <div style={{ position: "absolute", top: -8, left: -8, background: "#0f172a", color: "white", padding: "2px 6px", borderRadius: 8, fontSize: "8px", fontWeight:"bold" }}>{editAppNumber}</div>}
                     {editThumbnail 
                       ? <img src={editThumbnail} style={{ width: "100%", height: "100%", objectFit: "cover" }} alt="thumb" />
                       : renderIcon(editIcon, { size: 32, color: editBg.split(',')[1]?.trim() || "#333" })
@@ -383,6 +448,14 @@ export default function AaronAIGallery() {
                 ) : (
                   <div style={{ width: "100%", marginBottom: 12 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                       <div style={{ flex: 1 }}>
+                         <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginBottom: 4, display: "block" }}>[카테고리] 소속 그룹</label>
+                         <select className="edit-input" value={editCategory} onChange={e => setEditCategory(e.target.value)} style={{ padding: "6px 8px", cursor: "pointer" }}>
+                            <option value="필수">🔥 필수 앱 (Essential)</option>
+                            <option value="옵션">✨ 옵션 앱 (Optional)</option>
+                            <option value="개발중">🛠️ 개발 중 (In Dev)</option>
+                         </select>
+                       </div>
                        <div style={{ flex: 1 }}>
                          <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginBottom: 4, display: "block" }}>썸네일 이미지 파일 업로드</label>
                          <input type="file" accept="image/*" className="edit-input" style={{ padding: "4px 8px" }} onChange={async e => {
@@ -393,6 +466,10 @@ export default function AaronAIGallery() {
                              setEditThumbnail(b64);
                            } catch(err) { console.error(err); alert("이미지 처리 중 오류가 발생했습니다."); }
                          }} />
+                       </div>
+                       <div style={{ flex: 0.8 }}>
+                         <label style={{ fontSize:"0.75rem", fontWeight:600, color:"#64748b", marginBottom: 4, display: "block" }}>앱 번호 (3자리)</label>
+                         <input className="edit-input" value={editAppNumber} maxLength={3} onChange={e => setEditAppNumber(e.target.value)} placeholder="001, A1 ..." style={{ padding: "6px 8px", fontWeight: "bold" }} />
                        </div>
                        {editThumbnail && (
                          <div style={{ position: "relative", width: 44, height: 44, borderRadius: 8, overflow: "hidden", flexShrink: 0, marginTop: 18, border: "1px solid #e2e8f0" }}>
@@ -409,9 +486,19 @@ export default function AaronAIGallery() {
               <div style={{ padding: "40px 32px 24px", overflowY: "auto", flex: 1, background: isEditing ? "#f8fafc" : "white" }}>
                 {!isEditing ? (
                   <>
-                    <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", marginBottom: 10, letterSpacing: "-0.02em" }}>
-                      {editTitle}
-                    </h2>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "#0f172a", marginBottom: 10, letterSpacing: "-0.02em" }}>
+                        {editTitle}
+                      </h2>
+                      {editAppNumber && <span style={{ background: "#e2e8f0", color: "#334155", padding: "4px 10px", borderRadius: 16, fontSize: "0.8rem", fontWeight: "bold" }}>No. {editAppNumber}</span>}
+                    </div>
+                    {editKeywords && (
+                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+                         {editKeywords.split(',').map(k => k.trim()).filter(k=>k).map((kw, i) => (
+                           <span key={i} style={{ background: "#f1f5f9", color: "#475569", padding: "4px 10px", borderRadius: 8, fontSize: "0.8rem", fontWeight: 600 }}>🔖 {kw}</span>
+                         ))}
+                       </div>
+                    )}
                     <div style={{ fontSize: "0.95rem", color: "#475569", lineHeight: 1.6, marginBottom: 24, whiteSpace: "pre-wrap" }}>
                       {editDesc}
                     </div>
@@ -430,6 +517,10 @@ export default function AaronAIGallery() {
                     <div>
                       <label style={{ fontSize:"0.8rem", fontWeight:600, color:"#475569", marginBottom:4, display:"block" }}>타이틀</label>
                       <input className="edit-input" value={editTitle} onChange={e => setEditTitle(e.target.value)} style={{ padding:10, fontSize:"1.1rem" }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize:"0.8rem", fontWeight:600, color:"#475569", marginBottom:4, display:"block" }}>핵심 키워드 3~5개 콤마(,) 구분 입력</label>
+                      <input className="edit-input" value={editKeywords} onChange={e => setEditKeywords(e.target.value)} placeholder="자동화, 연동, 텔레그램" style={{ padding:10 }} />
                     </div>
                     <div>
                       <label style={{ fontSize:"0.8rem", fontWeight:600, color:"#475569", marginBottom:4, display:"block" }}>카드 상세 설명 (썸네일 설명)</label>

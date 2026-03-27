@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     const data = await req.json();
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     await db.execute({
-      sql: 'INSERT INTO aaron_features (id, icon, bgGrad, title, description, setupGuide, sort_order, thumbnail) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      sql: 'INSERT INTO aaron_features (id, icon, bgGrad, title, description, setupGuide, sort_order, thumbnail, category, app_number, keywords) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       args: [
         id, 
         data.icon || 'Bot', 
@@ -26,7 +26,10 @@ export async function POST(req: Request) {
         data.description || '이 기능에 대한 설명입니다.', 
         data.setupGuide || '<p>설정 가이드를 작성하세요.</p>', 
         data.sort_order || 999,
-        data.thumbnail || ''
+        data.thumbnail || '',
+        data.category || '필수',
+        data.app_number || '',
+        data.keywords || ''
       ]
     });
     return NextResponse.json({ success: true, id });
@@ -50,6 +53,9 @@ export async function PUT(req: Request) {
     if (data.setupGuide !== undefined) { fields.push('setupGuide = ?'); args.push(data.setupGuide); }
     if (data.sort_order !== undefined) { fields.push('sort_order = ?'); args.push(data.sort_order); }
     if (data.thumbnail !== undefined) { fields.push('thumbnail = ?'); args.push(data.thumbnail); }
+    if (data.category !== undefined) { fields.push('category = ?'); args.push(data.category); }
+    if (data.app_number !== undefined) { fields.push('app_number = ?'); args.push(data.app_number); }
+    if (data.keywords !== undefined) { fields.push('keywords = ?'); args.push(data.keywords); }
 
     if (fields.length === 0) return NextResponse.json({ success: true }); // Nothing to update
 
