@@ -414,10 +414,10 @@ export default function AaronAIGallery() {
             <LucideIcons.Bot size={32}/>
           </div>
           <h1 style={{ fontSize: "2.5rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.04em", marginBottom: 12 }}>
-            Aaron Agent <span style={{ color: "#0ea5e9" }}>Gallery</span>
+            Aron Agent <span style={{ color: "#0ea5e9" }}>Gallery</span>
           </h1>
           <p style={{ color: "#64748b", fontSize: "1.05rem", fontWeight: 500, maxWidth: 580, margin: "0 auto", lineHeight: 1.6 }}>
-            아론(Aaron) AI 비서의 다양한 기능을 직접 편집하고 관리해 보세요. 카드를 잡아 끌어(Drag) 구역 내 순서를 바꿀 수 있습니다.
+            아론(Aron) AI 비서의 다양한 기능을 직접 편집하고 관리해 보세요. 카드를 잡아 끌어(Drag) 구역 내 순서를 바꿀 수 있습니다.
           </p>
         </div>
         
