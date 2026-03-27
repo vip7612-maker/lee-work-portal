@@ -139,6 +139,17 @@ CREATE TABLE viewport_tabs (
   url TEXT NOT NULL,
   sort_order INTEGER DEFAULT 0
 );
+
+-- 아론 AI 기능 갤러리
+CREATE TABLE aaron_features (
+  id TEXT PRIMARY KEY,
+  icon TEXT NOT NULL,
+  bgGrad TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  setupGuide TEXT NOT NULL,
+  sort_order INTEGER DEFAULT 0
+);
 ```
 
 ## 🛠️ 기술 스택
