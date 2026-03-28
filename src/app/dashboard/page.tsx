@@ -270,9 +270,9 @@ export default function Dashboard({
     }
     
     // Fetch comments
-    const r = await fetch(`/api/comments?pid=${project.id}`);
+    const r = await fetch(`/api/comments?pid=${task.project_id}`);
     const data = await r.json();
-    setModalComments(data.comments || []);
+    setModalComments(Array.isArray(data) ? data : (data.comments || []));
   };
 
   const closeModal = async () => {
