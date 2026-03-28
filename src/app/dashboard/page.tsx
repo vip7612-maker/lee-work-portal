@@ -44,6 +44,8 @@ export default function Dashboard({
   const [modalComments, setModalComments] = useState<any[]>([]);
   const [newModalComment, setNewModalComment] = useState("");
   const [projectMemo, setProjectMemo] = useState("");
+  const [memoSaving, setMemoSaving] = useState(false);
+  const [memoSaved, setMemoSaved] = useState(false);
 
   useEffect(() => {
     loadBoard();
@@ -261,18 +263,34 @@ export default function Dashboard({
     setModalComments(data.comments || []);
   };
 
-  const closeModal = () => {
+  const closeModal = async () => {
+    // Always save memo before closing
+    if (selectedTask) {
+      await saveProjectMemo();
+    }
     setSelectedTask(null);
     setModalComments([]);
+    setMemoSaved(false);
   };
 
   const saveProjectMemo = async () => {
     if (!selectedTask) return;
-    await fetch('/api/projects', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: selectedTask.project_id, memo: projectMemo })
-    });
-    // Since page.tsx loads projects, ideally we mutate it or rely on a reload later.
+    setMemoSaving(true);
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: selectedTask.project_id, memo: projectMemo })
+      });
+      if (res.ok) {
+        setMemoSaved(true);
+        setTimeout(() => setMemoSaved(false), 2000);
+      } else {
+        console.error('Failed to save memo');
+      }
+    } catch (e) {
+      console.error('Network error saving memo:', e);
+    }
+    setMemoSaving(false);
   };
 
   const addModalComment = async () => {
@@ -487,11 +505,21 @@ export default function Dashboard({
                   <textarea 
                     value={projectMemo}
                     onChange={e => setProjectMemo(e.target.value)}
-                    onBlur={saveProjectMemo}
                     placeholder="프로젝트와 관련된 개요나 메모를 여기에 작성하세요..."
                     style={{ flex: 1, width: "100%", border: "1px solid #cbd5e1", borderRadius: 8, padding: 12, resize: "none", fontSize: "0.95rem", color: "#1e293b", outlineColor: "#3b82f6" }}
                   />
-                  <div style={{ fontSize: "0.8rem", color: "#94a3b8", marginTop: 8 }}>입력 후 바깥을 클릭하면 자동 저장됩니다.</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+                    <span style={{ fontSize: "0.8rem", color: memoSaved ? "#16a34a" : "#94a3b8", fontWeight: memoSaved ? 600 : 400, transition: "all 0.3s" }}>
+                      {memoSaving ? "저장 중..." : memoSaved ? "✓ 저장 완료" : ""}
+                    </span>
+                    <button 
+                      onClick={saveProjectMemo} 
+                      disabled={memoSaving}
+                      style={{ padding: "6px 16px", background: memoSaving ? "#94a3b8" : "#10b981", color: "white", border: "none", borderRadius: 6, fontWeight: 600, cursor: memoSaving ? "not-allowed" : "pointer", fontSize: "0.85rem", transition: "all 0.2s" }}
+                    >
+                      {memoSaving ? "저장 중..." : "💾 저장"}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Right: Comments */}
