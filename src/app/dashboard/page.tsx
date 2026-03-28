@@ -119,11 +119,12 @@ export default function Dashboard({ boardId = '__default__' }: { boardId?: strin
     const draggedId = dragTaskId.current;
     if (!draggedId) return;
 
-    // We can just drop it at the end of the target column for simplicity
+    // We drop it at the end of the target column
     const draggedTask = tasks.find(t => t.id === draggedId);
     if (!draggedTask) return;
 
-    // If same column, do nothing for now (could extend to sort within col)
+    // If same column and dropped on column background, do nothing 
+    // (We handle exact ordering in onTaskDrop when dropping on a specific task)
     if (draggedTask.column_id === targetColId) return;
 
     const newTasks = [...tasks];
@@ -142,6 +143,55 @@ export default function Dashboard({ boardId = '__default__' }: { boardId?: strin
 
     setTasks(newTasks);
 
+    await fetch('/api/board-tasks/reorder', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ updates })
+    });
+  };
+
+  const onTaskDrop = async (e: React.DragEvent, targetTaskId: string) => {
+    e.preventDefault();
+    e.stopPropagation(); // prevent column drop
+    setDragOverColId(null);
+    
+    const draggedId = dragTaskId.current;
+    if (!draggedId || draggedId === targetTaskId) return;
+
+    const newTasks = [...tasks];
+    const srcIdx = newTasks.findIndex(t => t.id === draggedId);
+    let dstIdx = newTasks.findIndex(t => t.id === targetTaskId);
+    
+    if (srcIdx === -1 || dstIdx === -1) return;
+
+    const sourceColId = newTasks[srcIdx].column_id;
+    const targetColId = newTasks[dstIdx].column_id;
+
+    // Move array item
+    const [moved] = newTasks.splice(srcIdx, 1);
+    moved.column_id = targetColId;
+    
+    // Recalculate dstIdx because splice might have shifted it
+    if (sourceColId === targetColId && srcIdx < dstIdx) {
+      dstIdx -= 1;
+    }
+    
+    // We drop it *before* the target task, or after depending on drop. Let's just drop before for simplicity:
+    newTasks.splice(dstIdx, 0, moved);
+
+    const colsToUpdate = new Set([sourceColId, targetColId]);
+    const updates: { id: string; column_id: string; sort_order: number }[] = [];
+    
+    colsToUpdate.forEach(cid => {
+      let order = 0;
+      newTasks.forEach(t => {
+        if (t.column_id === cid) {
+          t.sort_order = order++;
+          updates.push({ id: t.id, column_id: cid, sort_order: t.sort_order });
+        }
+      });
+    });
+
+    setTasks(newTasks);
     await fetch('/api/board-tasks/reorder', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ updates })
@@ -228,6 +278,8 @@ export default function Dashboard({ boardId = '__default__' }: { boardId?: strin
                   <div key={task.id} className="task-card" draggable 
                     onDragStart={e => onTaskDragStart(e, task.id)}
                     onDragEnd={onTaskDragEnd}
+                    onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+                    onDrop={e => onTaskDrop(e, task.id)}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                       <div style={{ display: "flex", gap: 6 }}>
