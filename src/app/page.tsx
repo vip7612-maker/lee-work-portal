@@ -259,7 +259,8 @@ export default function Portal() {
   const removeMemo = (id: string) => { setMemos(p => p.filter(m => m.id !== id)); api.del('/api/comments', { id }); };
 
   const addVpTab = () => {
-    if (!vpNewName.trim() || !vpNewUrl.trim()) return;
+    if (!vpNewName.trim()) return;
+    if (activeId !== DASHBOARD_ID && !vpNewUrl.trim()) return;
     const item: VpTab = { id: uid(), project_id: activeId, name: vpNewName.trim(), url: vpNewUrl.trim(), sort_order: vpTabs.length };
     setVpTabs(p => [...p, item]); setActiveVpTabId(item.id);
     setVpNewName(""); setVpNewUrl(""); setShowVpAdd(false);
@@ -445,10 +446,12 @@ export default function Portal() {
         {/* Add tab form */}
         {showVpAdd && (
           <div className="vp__tab-form">
-            <input value={vpNewName} onChange={e => setVpNewName(e.target.value)} placeholder="탭 이름"
+            <input value={vpNewName} onChange={e => setVpNewName(e.target.value)} placeholder={isDashboard ? "대시보드 카테고리 이름" : "탭 이름"}
               onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addVpTab(); if (e.key === 'Escape') setShowVpAdd(false); }} />
-            <input value={vpNewUrl} onChange={e => setVpNewUrl(e.target.value)} placeholder="URL"
-              onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addVpTab(); if (e.key === 'Escape') setShowVpAdd(false); }} />
+            {!isDashboard && (
+              <input value={vpNewUrl} onChange={e => setVpNewUrl(e.target.value)} placeholder="URL"
+                onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addVpTab(); if (e.key === 'Escape') setShowVpAdd(false); }} />
+            )}
             <button onClick={addVpTab}><Plus size={12}/></button>
           </div>
         )}
@@ -466,7 +469,7 @@ export default function Portal() {
 
         {/* Iframe (area 2) */}
         <div className="vp__body">
-          {(isDashboard || isAppStore || isAaronAi) && !activeVpTabId ? (isDashboard ? <Dashboard /> : isAppStore ? <AppStorePage /> : <AaronAIPage />) : (() => {
+          {isDashboard ? <Dashboard boardId={activeVpTabId || '__default__'} /> : ((isAppStore || isAaronAi) && !activeVpTabId) ? (isAppStore ? <AppStorePage /> : <AaronAIPage />) : (() => {
             const url = currentVpUrl?.replace(/\s+/g, '');
             if (!url) return (<div style={{ padding:"60px 40px", color:"var(--ink-3)", textAlign:"center" }}><h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active?.label || '대시보드'}</h2><p>링크를 설정하려면 우클릭 → 링크 변경</p></div>);
             let embedUrl = url.startsWith("http") ? url : `https://${url}`;
