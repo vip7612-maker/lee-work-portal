@@ -378,9 +378,12 @@ export default function Dashboard({
                           {task.priority === '높음' ? '↑ 높음' : '− 보통'}
                         </span>
                       </div>
-                      <button onClick={(e) => deleteTask(e, task.id)} style={{ padding: 2, background: "transparent", border: "none", cursor: "pointer", color: "#cbd5e1" }}>
-                        <X size={14} />
-                      </button>
+                      <div style={{ position: "relative" }} onClick={e => e.stopPropagation()} className="group">
+                        <MoreVertical size={16} color="#94a3b8" style={{ cursor: "pointer" }} />
+                        <div style={{ position: "absolute", right: 0, top: 16, display: "none", background: "white", border: "1px solid #e2e8f0", borderRadius: 4, padding: "4px 0", zIndex: 10, boxShadow: "0 4px 6px rgba(0,0,0,0.05)" }} className="group-hover:block">
+                          <button onClick={(e) => deleteTask(e, task.id)} style={{ padding: "4px 16px", color: "#ef4444", fontSize: "0.85rem", width: "100%", textAlign: "left", whiteSpace: "nowrap", border: "none", background: "transparent", cursor: "pointer" }}>삭제</button>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="task-title">
