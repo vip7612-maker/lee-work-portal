@@ -76,9 +76,17 @@ export default function Dashboard({
     const col: Column = { id: uid(), board_id: boardId, title: newColTitle.trim(), sort_order: columns.length };
     setColumns(p => [...p, col]);
     setNewColTitle("");
-    await fetch('/api/board-columns', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(col)
-    });
+    try {
+      const res = await fetch('/api/board-columns', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(col)
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        console.error('Failed to save column:', err);
+      }
+    } catch (e) {
+      console.error('Network error saving column:', e);
+    }
   };
 
   const renameColumn = async (id: string, newTitle: string) => {
@@ -102,21 +110,38 @@ export default function Dashboard({
   const addTask = async (columnId: string) => {
     if (!newTaskTitle.trim()) return;
     
+    const title = newTaskTitle.trim();
+    setAddingTaskColId(null);
+    setNewTaskTitle("");
+
     // 1. Create a real Project in the sidebar
-    const newProject = await addBoardProject(newTaskTitle.trim());
+    let projectId = '';
+    try {
+      const newProject = await addBoardProject(title);
+      projectId = newProject?.id || '';
+    } catch (e) {
+      console.error('Failed to create project:', e);
+    }
 
     // 2. Link it to a board task
     const t: Task = { 
-      id: uid(), column_id: columnId, project_id: newProject.id, title: newTaskTitle.trim(), 
+      id: uid(), column_id: columnId, project_id: projectId, title, 
       status: 'To Do', priority: '보통', date_range: '', 
       assignees: '', image_url: '', sort_order: tasks.filter(x => x.column_id === columnId).length 
     };
     setTasks(p => [...p, t]);
-    setAddingTaskColId(null);
-    setNewTaskTitle("");
-    await fetch('/api/board-tasks', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(t)
-    });
+    
+    try {
+      const res = await fetch('/api/board-tasks', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(t)
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        console.error('Failed to save task:', err);
+      }
+    } catch (e) {
+      console.error('Network error saving task:', e);
+    }
   };
 
   const deleteTask = async (e: React.MouseEvent, id: string) => {
