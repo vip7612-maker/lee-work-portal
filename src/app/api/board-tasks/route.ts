@@ -22,10 +22,10 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { id, column_id, title, status, priority, date_range, assignees, image_url, sort_order } = await req.json();
+    const { id, column_id, project_id, title, status, priority, date_range, assignees, image_url, sort_order } = await req.json();
     await db.execute({
-      sql: 'INSERT INTO board_tasks (id, column_id, title, status, priority, date_range, assignees, image_url, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      args: [id, column_id, title, status || 'To Do', priority || '보통', date_range || '', assignees || '', image_url || '', sort_order || 0]
+      sql: 'INSERT INTO board_tasks (id, column_id, project_id, title, status, priority, date_range, assignees, image_url, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      args: [id, column_id, project_id || '', title, status || 'To Do', priority || '보통', date_range || '', assignees || '', image_url || '', sort_order || 0]
     });
     return NextResponse.json({ success: true });
   } catch (err: any) {
@@ -41,6 +41,7 @@ export async function PUT(req: NextRequest) {
     const args = [];
     
     if (body.column_id !== undefined) { sets.push('column_id = ?'); args.push(body.column_id); }
+    if (body.project_id !== undefined) { sets.push('project_id = ?'); args.push(body.project_id); }
     if (body.title !== undefined) { sets.push('title = ?'); args.push(body.title); }
     if (body.status !== undefined) { sets.push('status = ?'); args.push(body.status); }
     if (body.priority !== undefined) { sets.push('priority = ?'); args.push(body.priority); }

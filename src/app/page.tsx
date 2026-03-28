@@ -248,6 +248,21 @@ export default function Portal() {
     api.post('/api/projects', { ...newTab, pinned: 0, sort_order: tabs.length, archived: 0 });
   };
 
+  const addBoardProject = async (title: string) => {
+    const id = uid();
+    const newTab: Tab = { id, label: title, url: "", pinned: false, memo: "", color: COLORS[tabs.length % COLORS.length] };
+    setTabs(prev => [...prev, newTab]);
+    try {
+      await api.post('/api/projects', { ...newTab, pinned: 0, sort_order: tabs.length, archived: 0 });
+    } catch (e) { console.error(e); }
+    return newTab;
+  };
+
+  const navigateToProject = (id: string) => {
+    setActiveId(id);
+    setActiveVpTabId(null);
+  };
+
   const addCheck = () => { if (!newCheck.trim()) return; const item: CheckItem = { id: uid(), project_id: activeId, text: newCheck.trim(), checked: 0, sort_order: checks.length }; setChecks(p => [...p, item]); setNewCheck(""); api.post('/api/checklists', item); };
   const toggleCheck = (id: string) => { setChecks(p => p.map(c => c.id === id ? { ...c, checked: c.checked ? 0 : 1 } : c)); const c = checks.find(x => x.id === id); api.put('/api/checklists', { id, checked: c?.checked ? 0 : 1 }); };
   const removeCheck = (id: string) => { setChecks(p => p.filter(c => c.id !== id)); api.del('/api/checklists', { id }); };
@@ -469,7 +484,7 @@ export default function Portal() {
 
         {/* Iframe (area 2) */}
         <div className="vp__body">
-          {isDashboard ? <Dashboard boardId={activeVpTabId || '__default__'} /> : ((isAppStore || isAaronAi) && !activeVpTabId) ? (isAppStore ? <AppStorePage /> : <AaronAIPage />) : (() => {
+          {isDashboard ? <Dashboard boardId={activeVpTabId || '__default__'} projects={tabs} addBoardProject={addBoardProject} navigateToProject={navigateToProject} /> : ((isAppStore || isAaronAi) && !activeVpTabId) ? (isAppStore ? <AppStorePage /> : <AaronAIPage />) : (() => {
             const url = currentVpUrl?.replace(/\s+/g, '');
             if (!url) return (<div style={{ padding:"60px 40px", color:"var(--ink-3)", textAlign:"center" }}><h2 style={{ color:"var(--ink)", marginBottom:8 }}>{active?.label || '대시보드'}</h2><p>링크를 설정하려면 우클릭 → 링크 변경</p></div>);
             let embedUrl = url.startsWith("http") ? url : `https://${url}`;
