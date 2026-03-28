@@ -293,7 +293,7 @@ export default function Portal() {
           <button className="sb__home" onClick={() => { setActiveId(DASHBOARD_ID); setActiveVpTabId(null); }} title="홈 대시보드">
             <Home size={18}/>
           </button>
-          <span>이경진 업무포털</span>
+          <span onClick={() => { setActiveId(DASHBOARD_ID); setActiveVpTabId(null); }} style={{ cursor: "pointer" }} title="홈 대시보드">이경진 업무포털</span>
           <button className="sb__signout" onClick={() => signOut()}>로그아웃</button>
         </div>
 
