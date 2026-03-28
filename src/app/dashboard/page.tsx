@@ -256,7 +256,19 @@ export default function Dashboard({
   // --- Modal Specific Methods ---
   const openModal = async (task: Task, project: Project) => {
     setSelectedTask(task);
-    setProjectMemo(project.memo || "");
+    setMemoSaved(false);
+    
+    // Fetch fresh project data from DB (props may be stale)
+    try {
+      const projRes = await fetch(`/api/projects`);
+      const allProjects = await projRes.json();
+      const freshProject = allProjects.find((p: any) => p.id === task.project_id);
+      setProjectMemo(freshProject?.memo || "");
+    } catch (e) {
+      // Fallback to prop value
+      setProjectMemo(project.memo || "");
+    }
+    
     // Fetch comments
     const r = await fetch(`/api/comments?pid=${project.id}`);
     const data = await r.json();
