@@ -295,6 +295,13 @@ export default function Dashboard({
         .task-date { font-size: 0.8rem; color: #ef4444; font-weight: 500; }
         .col-title-input { font-size: 1rem; font-weight: 700; color: #1e293b; border: 1px solid #3b82f6; border-radius: 4px; outline: none; padding: 2px 6px; width: 100%; }
         
+        /* Three-dots dropdown */
+        .dots-menu { position: relative; }
+        .dots-dropdown { position: absolute; right: 0; top: 20px; display: none; background: white; border: 1px solid #e2e8f0; border-radius: 4px; padding: 4px 0; z-index: 10; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .dots-menu:hover .dots-dropdown { display: block; }
+        .dots-dropdown button { padding: 6px 16px; width: 100%; text-align: left; white-space: nowrap; border: none; background: transparent; cursor: pointer; font-size: 0.85rem; }
+        .dots-dropdown button:hover { background: #f8fafc; }
+
         /* Modal Styles */
         .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
         .modal-content { background: white; width: 600px; max-width: 90vw; max-height: 85vh; border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); }
@@ -328,11 +335,11 @@ export default function Dashboard({
                     </>
                   )}
                 </div>
-                <div style={{ position: "relative", marginLeft: 'auto' }} className="group">
+                <div style={{ marginLeft: 'auto' }} className="dots-menu">
                   <MoreVertical size={16} color="#94a3b8" style={{ cursor: "pointer" }} />
-                  <div style={{ position: "absolute", right: 0, top: 20, display: "none", background: "white", border: "1px solid #e2e8f0", borderRadius: 4, padding: "4px 0", zIndex: 10, boxShadow: "0 4px 6px rgba(0,0,0,0.05)" }} className="group-hover:block">
-                    <button onClick={() => deleteColumn(col.id)} style={{ padding: "6px 16px", color: "#ef4444", fontSize: "0.85rem", width: "100%", textAlign: "left", whiteSpace: "nowrap", border: "none", background: "transparent", cursor: "pointer" }}>카테고리 삭제</button>
-                    <button onClick={() => { setEditingColId(col.id); setEditingColTitle(col.title); }} style={{ padding: "6px 16px", color: "#64748b", fontSize: "0.85rem", width: "100%", textAlign: "left", whiteSpace: "nowrap", border: "none", background: "transparent", cursor: "pointer" }}>이름 바꾸기</button>
+                  <div className="dots-dropdown">
+                    <button onClick={() => deleteColumn(col.id)} style={{ color: "#ef4444" }}>카테고리 삭제</button>
+                    <button onClick={() => { setEditingColId(col.id); setEditingColTitle(col.title); }} style={{ color: "#64748b" }}>이름 바꾸기</button>
                   </div>
                 </div>
               </div>
@@ -378,10 +385,10 @@ export default function Dashboard({
                           {task.priority === '높음' ? '↑ 높음' : '− 보통'}
                         </span>
                       </div>
-                      <div style={{ position: "relative" }} onClick={e => e.stopPropagation()} className="group">
+                      <div onClick={e => e.stopPropagation()} className="dots-menu">
                         <MoreVertical size={16} color="#94a3b8" style={{ cursor: "pointer" }} />
-                        <div style={{ position: "absolute", right: 0, top: 16, display: "none", background: "white", border: "1px solid #e2e8f0", borderRadius: 4, padding: "4px 0", zIndex: 10, boxShadow: "0 4px 6px rgba(0,0,0,0.05)" }} className="group-hover:block">
-                          <button onClick={(e) => deleteTask(e, task.id)} style={{ padding: "4px 16px", color: "#ef4444", fontSize: "0.85rem", width: "100%", textAlign: "left", whiteSpace: "nowrap", border: "none", background: "transparent", cursor: "pointer" }}>삭제</button>
+                        <div className="dots-dropdown" style={{ top: 16 }}>
+                          <button onClick={(e) => deleteTask(e, task.id)} style={{ color: "#ef4444" }}>삭제</button>
                         </div>
                       </div>
                     </div>
