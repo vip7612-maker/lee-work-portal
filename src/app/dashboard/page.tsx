@@ -549,7 +549,7 @@ export default function Dashboard({
                   <div style={{ display: "flex", gap: 8 }}>
                     <input 
                       value={newModalComment} onChange={e => setNewModalComment(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') addModalComment(); }}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addModalComment(); }}
                       placeholder="댓글 추가..."
                       style={{ flex: 1, width: "100%", padding: "8px 12px", border: "1px solid #cbd5e1", borderRadius: 6, outline: "none", fontSize: "0.9rem" }}
                     />
