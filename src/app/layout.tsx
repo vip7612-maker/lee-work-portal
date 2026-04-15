@@ -7,6 +7,12 @@ export const metadata: Metadata = {
   description: "이경진 개인 업무 관리 포털 - Dia Browser Style",
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

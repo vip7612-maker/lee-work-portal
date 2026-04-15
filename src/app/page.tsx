@@ -312,7 +312,7 @@ export default function Portal() {
   if (!active && !isDashboard && !isAppStore && !isAaronAi) return <div className="login-screen"><p style={{ color:"var(--ink-3)" }}>프로젝트를 불러오는 중...</p></div>;
 
   return (
-    <div className={`shell ${panelOpen ? "panel-open" : "panel-closed"} ${sbOpen ? '' : 'sb-closed'}`} style={{ "--sb": `${sbWidth}px` } as React.CSSProperties}>
+    <div className={`shell ${sbOpen ? 'is-sb-open' : 'is-sb-closed'} ${panelOpen ? 'is-panel-open' : 'is-panel-closed'}`} style={{ "--sb": `${sbWidth}px` } as React.CSSProperties}>
 
       {/* 모바일 오버레이 */}
       <div 
