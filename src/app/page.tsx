@@ -70,8 +70,8 @@ export default function Portal() {
   const [tabs, setTabs]             = useState<Tab[]>([]);
   const [activeId, setActiveId]     = useState(DASHBOARD_ID);
   const [sbWidth, setSbWidth]       = useState(240);
-  const [sbOpen, setSbOpen]         = useState(true);
-  const [panelOpen, setPanelOpen]   = useState(true);
+  const [sbOpen, setSbOpen]         = useState(false);
+  const [panelOpen, setPanelOpen]   = useState(false);
   const [trash, setTrash]           = useState<Tab[]>([]);
   const [trashOpen, setTrashOpen]   = useState(false);
   const [editingId, setEditingId]   = useState<string | null>(null);
@@ -117,8 +117,11 @@ export default function Portal() {
     const up = () => { resizing.current = false; };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
     
-    // 모바일 초기 진입시 패널 닫기
-    if (window.innerWidth <= 768) {
+    // 초기 화면 크기에 따른 패널 상태 설정
+    if (window.innerWidth > 768) {
+      setSbOpen(true);
+      setPanelOpen(true);
+    } else {
       setSbOpen(false);
       setPanelOpen(false);
     }

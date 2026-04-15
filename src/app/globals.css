@@ -628,6 +628,17 @@ html, body { margin:0; padding:0; height:100vh; overflow:hidden;
   .vp__tabbar {
     padding: 0 12px;
   }
+  .vp__toolbar {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .vp__url {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+  }
+  .vp__nav {
+    gap: 8px;
+  }
   .sb__resize {
     display: none;
   }
