@@ -539,3 +539,96 @@ html, body { margin:0; padding:0; height:100vh; overflow:hidden;
   border-color: var(--tint) !important;
 }
 .url-edit-save:hover { opacity: .9; }
+
+/* ── Mobile Overlay ── */
+.mobile-overlay { display: none; }
+
+/* ── Responsive Mobile (<= 768px) ── */
+@media (max-width: 768px) {
+  .shell {
+    display: flex;
+    flex-direction: row;
+    position: relative;
+    padding: 0;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+  }
+  
+  /* Reset grid properties */
+  .shell.panel-open, .shell.panel-closed, .shell.sb-closed.panel-open, .shell.sb-closed.panel-closed {
+    grid-template-columns: none;
+  }
+  
+  .vp {
+    flex: 1;
+    min-width: 100vw;
+    width: 100%;
+    border-radius: 0;
+  }
+
+  .sb {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 280px !important;
+    max-width: 85vw;
+    z-index: 100;
+    background: var(--chrome);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .shell.sb-closed .sb {
+    transform: translateX(-100%);
+    opacity: 0;
+    pointer-events: none;
+    width: 280px !important;
+  }
+
+  .rp {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 320px !important;
+    max-width: 85vw;
+    z-index: 100;
+    border-radius: 0;
+    background: var(--surface);
+    box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .shell.panel-closed .rp {
+    transform: translateX(100%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .mobile-overlay {
+    display: block;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 90;
+    transition: opacity 0.3s;
+  }
+  .mobile-overlay.is-hidden {
+    opacity: 0; pointer-events: none;
+  }
+
+  .vp__tabbar {
+    padding: 0 12px;
+  }
+  .sb__resize {
+    display: none;
+  }
+}

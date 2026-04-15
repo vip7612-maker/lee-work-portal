@@ -116,6 +116,13 @@ export default function Portal() {
     const move = (e: PointerEvent) => { if (!resizing.current) return; setSbWidth(Math.max(180, Math.min(380, e.clientX))); };
     const up = () => { resizing.current = false; };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+    
+    // 모바일 초기 진입시 패널 닫기
+    if (window.innerWidth <= 768) {
+      setSbOpen(false);
+      setPanelOpen(false);
+    }
+    
     return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
   }, []);
 
@@ -300,6 +307,12 @@ export default function Portal() {
 
   return (
     <div className={`shell ${panelOpen ? "panel-open" : "panel-closed"} ${sbOpen ? '' : 'sb-closed'}`} style={{ "--sb": `${sbWidth}px` } as React.CSSProperties}>
+
+      {/* 모바일 오버레이 */}
+      <div 
+        className={`mobile-overlay ${(!sbOpen && !panelOpen) ? 'is-hidden' : ''}`}
+        onClick={() => { setSbOpen(false); setPanelOpen(false); }}
+      />
 
       {/* ═══ SIDEBAR ═══ */}
       <div className="sb">
