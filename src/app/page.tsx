@@ -67,6 +67,7 @@ export default function Portal() {
   /* ═══ ALL HOOKS FIRST (React Rules of Hooks compliance) ═══ */
   const { data: session, status } = useSession();
 
+  const [mounted, setMounted]       = useState(false);
   const [tabs, setTabs]             = useState<Tab[]>([]);
   const [activeId, setActiveId]     = useState(DASHBOARD_ID);
   const [sbWidth, setSbWidth]       = useState(240);
@@ -110,15 +111,17 @@ export default function Portal() {
   const onPointerDown = useCallback(() => { resizing.current = true; }, []);
 
   /* ── Effects ── */
+  useEffect(() => { setMounted(true); }, []);
   useEffect(() => { const h = () => setCtxMenu(null); window.addEventListener("click", h); return () => window.removeEventListener("click", h); }, []);
 
   useEffect(() => {
+    if (!mounted) return;
     const move = (e: PointerEvent) => { if (!resizing.current) return; setSbWidth(Math.max(180, Math.min(380, e.clientX))); };
     const up = () => { resizing.current = false; };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
     
-    // 초기 화면 크기에 따른 패널 상태 설정
-    if (window.innerWidth > 768) {
+    // 초기 화면 크기에 따른 패널 상태 설정 (1024px로 기준 상향)
+    if (window.innerWidth > 1024) {
       setSbOpen(true);
       setPanelOpen(true);
     } else {
@@ -127,7 +130,7 @@ export default function Portal() {
     }
     
     return () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
-  }, []);
+  }, [mounted]);
 
   useEffect(() => {
     if (!session) return;
@@ -171,7 +174,7 @@ export default function Portal() {
   useEffect(() => { memosEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [memos]);
 
   /* ═══ AUTH GATE — after ALL hooks ═══ */
-  if (status === "loading") {
+  if (!mounted || status === "loading") {
     return <div className="login-screen"><p style={{ color:"var(--ink-3)" }}>로딩 중...</p></div>;
   }
   if (!session) {
