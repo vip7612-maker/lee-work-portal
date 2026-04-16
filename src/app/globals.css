@@ -53,9 +53,15 @@ html, body {
 }
 
 .shell.is-sb-open .sb {
-  transform: translateX(0);
-  opacity: 1;
-  pointer-events: auto;
+  transform: translateX(0) !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.shell.is-sb-closed .sb {
+  transform: translateX(-110%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .rp {
@@ -69,15 +75,21 @@ html, body {
   background: var(--surface);
   box-shadow: -4px 0 24px rgba(0,0,0,0.15);
   transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease;
-  transform: translateX(110%); /* Hidden by default */
-  opacity: 0;
-  pointer-events: none;
+  transform: translateX(110%) !important; /* Hidden by default */
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .shell.is-panel-open .rp {
-  transform: translateX(0);
-  opacity: 1;
-  pointer-events: auto;
+  transform: translateX(0) !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.shell.is-panel-closed .rp {
+  transform: translateX(110%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 /* ── Viewport (Main Content) ── */

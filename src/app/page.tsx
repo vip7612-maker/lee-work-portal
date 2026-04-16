@@ -120,8 +120,9 @@ export default function Portal() {
     const up = () => { resizing.current = false; };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
     
-    // 초기 화면 크기에 따른 패널 상태 설정 (1024px로 기준 상향)
-    if (window.innerWidth > 1024) {
+    // 초기 화면 크기에 따른 패널 상태 설정 (matchMedia 사용)
+    const isDesktop = window.matchMedia("(min-width: 1025px)").matches;
+    if (isDesktop) {
       setSbOpen(true);
       setPanelOpen(true);
     } else {
@@ -398,8 +399,14 @@ export default function Portal() {
                 ))}
               </div>
             )}
+              </div>
+            )}
           </div>
         )}
+
+        <div style={{ padding: "10px 16px", fontSize: "10px", color: "var(--ink-3)", opacity: 0.5 }}>
+          Last Build: 2026-04-16 09:50
+        </div>
 
         {/* URL edit overlay */}
         {urlEditId && (
