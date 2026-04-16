@@ -399,8 +399,6 @@ export default function Portal() {
                 ))}
               </div>
             )}
-              </div>
-            )}
           </div>
         )}
 
